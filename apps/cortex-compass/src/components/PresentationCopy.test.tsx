@@ -139,7 +139,12 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     const markup = renderToStaticMarkup(<CompareDrawer {...compareProps} />);
     expect(markup).toContain('class="details-panel compare-drawer"');
     expect(markup).toContain('aria-label="Compare selections"');
-    expect(markup).toContain('Pinned stimuli');
+    expect(markup).toContain('Univariate');
+    expect(markup).toContain('Multivariate');
+    expect(markup).toContain('Univariate · ROI mean responses');
+    expect(markup).toContain('Relative predicted means');
+    expect(markup).not.toContain('Pinned stimuli');
+    expect(markup).not.toContain('Choose up to two images');
     expect(markup).not.toContain('compare-modal-backdrop');
     expect(markup).not.toContain('aria-modal');
     expect(markup).not.toContain('Open comparison');

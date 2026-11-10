@@ -330,7 +330,7 @@ export function CompareDrawer({
           </div>
 
           <CompareResponseTools key={`${cellA.id}:${cellB.id}`} cellA={cellA} cellB={cellB}
-            evidenceA={evidenceA} evidenceB={evidenceB} clustering={clustering} onOpenImage={setModalImage} />
+            evidenceA={evidenceA} evidenceB={evidenceB} onOpenImage={setModalImage} />
 
           {/* Overlap section */}
           {summary ? (

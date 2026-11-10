@@ -295,13 +295,14 @@ with the same training, evaluation, and metric selected—not its multi-dataset 
 **Brain & selectivity** contains the cortical 3D Brain Map and the Voxel Selectivity Explorer,
 which offers cortical and non-anatomical similarity views.
 
-**Compare selections** includes a shared-reference predicted-response scatterplot.
-Each model's image means are standardized separately over the same shared image
-IDs, with equal axis scales. Hover or focus previews the image, both response
-ranks, and standardized values. Pin up to two images to carry matching shapes
-and labels into side-by-side hierarchical cluster views. Gap highlights remain
-separate from pins. The comparison stays in the right panel while two cells are
-selected; turning Compare mode off clears the pair.
+**Compare selections** includes univariate and multivariate views over shared
+Murty-185 references. **Univariate** plots z-scored ROI-mean responses with
+mean Pearson r and rank Spearman ρ; hover previews an image, and color marks
+the two largest standardized gaps in each direction. **Multivariate** loads
+Subject 1 voxel predictions, builds Euclidean RDMs (÷ voxel count, matching
+Core), and reports RDM Spearman ρ plus the largest pairwise disagreements.
+Both views stay in the right panel while two cells are selected; turning
+Compare mode off clears the pair.
 
 The brain image picker is searchable and bounded regardless of upload count, with previous/next navigation
 and a selected-image preview. Display controls collapse on narrow screens so the cortex stays visible.

@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { SelectedHeatmapCell } from '../types/data';
+import type { EvidenceImage, SelectedHeatmapCell } from '../types/data';
 import { responseAxisDomain, type SharedResponsePoint } from '../utils/responseComparison';
-import { ComparisonPinMarker } from './ComparisonPinMarker';
 
 export function comparisonModelLabel(model: string): string {
   return ({ clip_rn50: 'CLIP RN50', clip_rn101: 'CLIP RN101', clip_vit_b32: 'CLIP ViT-B/32' } as Record<string, string>)[model] ?? model;
@@ -12,8 +11,7 @@ type Props = {
   points: SharedResponsePoint[];
   cellA: SelectedHeatmapCell;
   cellB: SelectedHeatmapCell;
-  pinnedImages: SharedResponsePoint[];
-  onTogglePin: (imageName: string) => void;
+  onOpenImage: (image: EvidenceImage) => void;
 };
 
 const BLUE = '#2468A0';
@@ -24,7 +22,7 @@ const LEFT = 72;
 const TOP = 24;
 const SIDE = 400;
 
-export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onTogglePin }: Props) {
+export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Props) {
   type Preview = { point: SharedResponsePoint; x: number; y: number };
   const [hoverPreview, setHoverPreview] = useState<Preview | null>(null);
   const [focusPreview, setFocusPreview] = useState<Preview | null>(null);
@@ -37,8 +35,17 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
   const scaleY = (value: number) => TOP + SIDE - (value - low) / (high - low) * SIDE;
   const aLabel = comparisonModelLabel(cellA.model);
   const bLabel = comparisonModelLabel(cellB.model);
-  const pinByName = new Map(pinnedImages.map((image, index) => [image.imageName, index]));
   const ticks = Array.from({ length: Math.floor(high) - Math.ceil(low) + 1 }, (_, index) => Math.ceil(low) + index);
+
+  function openPoint(point: SharedResponsePoint) {
+    onOpenImage({
+      imageName: point.imageName,
+      imageUrl: point.imageUrl,
+      value: point.meanA,
+      rank: point.rankA,
+      valueLabel: `${aLabel} #${point.rankA} · ${bLabel} #${point.rankB}`,
+    });
+  }
 
   useEffect(() => {
     if (!preview) return;
@@ -72,8 +79,8 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
   return (
     <section className="compare-response-section" aria-label="Predicted response scatterplot">
       <div className="compare-response-intro">
-        <h3>Relative predicted responses</h3>
-        <span>{points.length} shared reference images</span>
+        <h3>Relative predicted means</h3>
+        <span>{points.length} shared reference images · points near y = x agree</span>
       </div>
       <div className="compare-response-layout">
         <figure className="compare-response-figure" ref={figureRef}>
@@ -86,10 +93,9 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
               <text x={LEFT - 12} y={scaleY(tick) + 4} textAnchor="end">{tick}</text>
             </g>)}
             <line className="compare-response-identity" x1={LEFT} y1={TOP + SIDE} x2={LEFT + SIDE} y2={TOP} />
-            <text className="compare-response-identity-label" x={LEFT + SIDE - 12} y={TOP + 18} textAnchor="end">y = x</text>
+            <text className="compare-response-identity-label" x={LEFT + SIDE - 12} y={TOP + 18} textAnchor="end">agreement</text>
             {/* Render highlighted points last so dense neighbors do not cover them. */}
             {[...points.filter(p => !p.gapDirection), ...points.filter(p => p.gapDirection)].map((point, index) => {
-              const pinIndex = pinByName.get(point.imageName);
               const color = point.gapDirection === 'b' ? BLUE : point.gapDirection === 'a' ? RED : '#929292';
               return <g key={point.imageName}
                 role="button" tabIndex={0}
@@ -97,16 +103,15 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
                 data-gap-direction={point.gapDirection ?? ''}
                 data-z-a={point.zA} data-z-b={point.zB} data-z-gap={point.gap}
                 data-rank-a={point.rankA} data-rank-b={point.rankB}
-                aria-label={`${point.imageId}; ${aLabel} rank ${point.rankA}, z ${point.zA.toFixed(3)}; ${bLabel} rank ${point.rankB}, z ${point.zB.toFixed(3)}; ${pinIndex === undefined ? 'pin stimulus' : `unpin stimulus ${pinIndex + 1}`}`}
-                aria-pressed={pinIndex !== undefined}
+                aria-label={`${point.imageId}; ${aLabel} rank ${point.rankA}, z ${point.zA.toFixed(3)}; ${bLabel} rank ${point.rankB}, z ${point.zB.toFixed(3)}`}
                 aria-describedby={preview?.point.imageName === point.imageName ? tooltipId : undefined}
                 onMouseEnter={event => showPreview(point, event.currentTarget, 'hover')}
                 onMouseLeave={() => setHoverPreview(null)}
                 onFocus={event => showPreview(point, event.currentTarget, 'focus')}
                 onBlur={() => setFocusPreview(null)}
-                onClick={() => onTogglePin(point.imageName)}
+                onClick={() => openPoint(point)}
                 onKeyDown={event => {
-                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onTogglePin(point.imageName); }
+                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPoint(point); }
                   if (event.key === 'Escape') {
                     setHoverPreview(null); setFocusPreview(null);
                   }
@@ -118,9 +123,6 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
                   r={point.gapDirection ? 5.4 : 3.8} fill={color} opacity={point.gapDirection ? 1 : .65} />
               </g>;
             })}
-            {pinnedImages.map((point, index) => <ComparisonPinMarker key={point.imageName} index={index}
-              x={scaleX(point.zA)} y={scaleY(point.zB)} label={`${index + 1} · ${point.imageId}`}
-              labelSide={point.zA > (low + high) / 2 ? 'left' : 'right'} labelDy={index === 0 ? 21 : -16} />)}
             <text className="compare-response-axis-title" x={LEFT + SIDE / 2} y={H - 20} textAnchor="middle">{aLabel} · {cellA.roi.toUpperCase()} (z-score)</text>
             <text className="compare-response-axis-title" transform={`translate(19,${TOP + SIDE / 2}) rotate(-90)`} textAnchor="middle">{bLabel} · {cellB.roi.toUpperCase()} (z-score)</text>
           </svg>
@@ -132,16 +134,16 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
             <div className="compare-gap-grid">
               {points.filter(p => p.gapDirection === direction).sort((a, b) => direction === 'b' ? b.gap - a.gap : a.gap - b.gap).map(point => <button
                 type="button" className="compare-gap-example" key={point.imageName}
-                onClick={() => onTogglePin(point.imageName)} aria-pressed={pinByName.has(point.imageName)}
-                aria-label={`${pinByName.has(point.imageName) ? 'Unpin' : 'Pin'} ${point.imageId}`}>
+                onClick={() => openPoint(point)}
+                aria-label={`Open ${point.imageId}`}>
                 <img src={point.imageUrl} alt={point.imageId} />
                 <strong>{point.imageId}</strong>
-                <span>A #{point.rankA} · B #{point.rankB}</span>
+                <span>{aLabel} #{point.rankA} · {bLabel} #{point.rankB}</span>
                 <span>Δz {point.gap >= 0 ? '+' : ''}{point.gap.toFixed(3)}</span>
               </button>)}
             </div>
           </section>)}
-          <p>Color marks the two largest gaps in each direction. Pin shapes mark your selections.</p>
+          <p>Color marks the two largest gaps in each direction.</p>
         </div>
       </div>
       {preview && createPortal(<div className="compare-response-tooltip" id={tooltipId} role="tooltip"
@@ -152,7 +154,7 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
           <tr><th>{aLabel}</th><td>#{preview.point.rankA}</td><td>{preview.point.zA.toFixed(3)}</td></tr>
           <tr><th>{bLabel}</th><td>#{preview.point.rankB}</td><td>{preview.point.zB.toFixed(3)}</td></tr>
         </tbody></table>
-        <span>Click or press Enter to {pinByName.has(preview.point.imageName) ? 'unpin' : 'pin'}.</span>
+        <span>Click or press Enter to open the image.</span>
       </div>, document.body)}
     </section>
   );

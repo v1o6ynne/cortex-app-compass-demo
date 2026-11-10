@@ -77,6 +77,8 @@ describe('shared standardized predicted responses', () => {
     );
     expect(result.unavailableReason).toBeNull();
     expect(result.points).toHaveLength(185);
+    expect(result.meanPearson).not.toBeNull();
+    expect(result.rankSpearman).not.toBeNull();
     expect(result.meanA).toBeCloseTo(-.2432765681196501, 14);
     expect(result.meanB).toBeCloseTo(-.2662515031030083, 14);
     expect(result.sdA).toBeCloseTo(.4921282716270678, 14);

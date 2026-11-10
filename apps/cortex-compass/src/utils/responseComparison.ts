@@ -12,7 +12,7 @@ export type SharedResponsePoint = {
   zB: number;
   /** Standardized response in model B minus model A. */
   gap: number;
-  /** The two largest gaps in each signed direction; independent of pinning. */
+  /** The two largest gaps in each signed direction. */
   gapDirection: 'a' | 'b' | null;
 };
 
@@ -22,6 +22,10 @@ export type SharedResponseComparison = {
   meanB: number | null;
   sdA: number | null;
   sdB: number | null;
+  /** Pearson r between the two models' ROI-mean responses on shared images. */
+  meanPearson: number | null;
+  /** Spearman ρ between the two models' existing response ranks. */
+  rankSpearman: number | null;
   unavailableReason: string | null;
 };
 
@@ -64,7 +68,8 @@ export function buildSharedResponseComparison(
   bImages: EvidenceImage[],
 ): SharedResponseComparison {
   const unavailable = (unavailableReason: string): SharedResponseComparison => ({
-    points: [], meanA: null, meanB: null, sdA: null, sdB: null, unavailableReason,
+    points: [], meanA: null, meanB: null, sdA: null, sdB: null,
+    meanPearson: null, rankSpearman: null, unavailableReason,
   });
   const aByImage = referenceIndex(aImages);
   const bByImage = referenceIndex(bImages);
@@ -83,6 +88,7 @@ export function buildSharedResponseComparison(
       points: [], meanA: Number.isFinite(a.mean) ? a.mean : null,
       meanB: Number.isFinite(b.mean) ? b.mean : null,
       sdA: Number.isFinite(a.sd) ? a.sd : null, sdB: Number.isFinite(b.sd) ? b.sd : null,
+      meanPearson: null, rankSpearman: null,
       unavailableReason: 'Standardized responses are unavailable because a model has no finite variation across the shared references.',
     };
   }
@@ -103,7 +109,35 @@ export function buildSharedResponseComparison(
     .sort((aPoint, bPoint) => aPoint.gap - bPoint.gap || aPoint.imageName.localeCompare(bPoint.imageName));
   for (const point of positive.slice(0, 2)) point.gapDirection = 'b';
   for (const point of negative.slice(0, 2)) point.gapDirection = 'a';
-  return { points, meanA: a.mean, meanB: b.mean, sdA: a.sd, sdB: b.sd, unavailableReason: null };
+  return {
+    points,
+    meanA: a.mean,
+    meanB: b.mean,
+    sdA: a.sd,
+    sdB: b.sd,
+    meanPearson: pearsonOfPairs(points.map((point) => point.meanA), points.map((point) => point.meanB)),
+    rankSpearman: pearsonOfPairs(points.map((point) => point.rankA), points.map((point) => point.rankB)),
+    unavailableReason: null,
+  };
+}
+
+function pearsonOfPairs(aValues: number[], bValues: number[]): number | null {
+  if (aValues.length !== bValues.length || aValues.length < 2) return null;
+  const aMean = compensatedSum(aValues.map((value) => value / aValues.length));
+  const bMean = compensatedSum(bValues.map((value) => value / bValues.length));
+  let numerator = 0;
+  let aSumSquares = 0;
+  let bSumSquares = 0;
+  for (let index = 0; index < aValues.length; index += 1) {
+    const aCentered = aValues[index] - aMean;
+    const bCentered = bValues[index] - bMean;
+    numerator += aCentered * bCentered;
+    aSumSquares += aCentered ** 2;
+    bSumSquares += bCentered ** 2;
+  }
+  const denominator = Math.sqrt(aSumSquares * bSumSquares);
+  if (denominator === 0) return null;
+  return Math.max(-1, Math.min(1, numerator / denominator));
 }
 
 /** Use this same domain for both axes; one standardized unit has equal length. */
