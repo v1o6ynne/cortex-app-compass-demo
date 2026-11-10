@@ -1063,9 +1063,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   padding: 0 32px;
   margin-top: 12px;
 }
-.workspace-grid--compare {
-  grid-template-columns: minmax(460px, 0.42fr) minmax(0, 1fr);
-}
 
 .model-browser {
   position: sticky;
@@ -1078,12 +1075,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 .model-browser .help-box { grid-column: 1 / -1; margin: 0; }
 .model-browser .help-box summary { padding: 8px 12px; font-size: .72rem; }
-.model-browser--compare {
-  grid-template-rows: auto minmax(520px, 1fr) auto;
-}
-.model-browser--compare .heatmap-scroll {
-  min-height: 480px;
-}
 
 /* ─────────────────────────────────────────────
    SHARED PANEL BASE
@@ -2604,13 +2595,11 @@ button.cluster-size-chip:hover {
    RESPONSIVE
    ───────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .workspace-grid,
-  .workspace-grid--compare { grid-template-columns: 1fr; }
+  .workspace-grid { grid-template-columns: 1fr; }
   .model-browser { position: static; max-height: none; grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr); grid-template-rows: auto; align-items: stretch; }
   .heatmap-area,
   .details-panel  { position: static; max-height: none; }
   .heatmap-scroll { max-height: 350px; }
-  .model-browser--compare .heatmap-scroll { max-height: min(70vh, 720px); min-height: 360px; }
   .controls-bar   { position: static; }
 }
 

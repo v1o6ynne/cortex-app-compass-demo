@@ -300,8 +300,8 @@ Each model's image means are standardized separately over the same shared image
 IDs, with equal axis scales. Hover or focus previews the image, both response
 ranks, and standardized values. Pin up to two images to carry matching shapes
 and labels into side-by-side hierarchical cluster views. Gap highlights remain
-separate from pins. Closing the dialog keeps the A/B heatmap selections and pins;
-**Open comparison** reopens it, and turning Compare mode off clears the pair.
+separate from pins. The comparison stays in the right panel while two cells are
+selected; turning Compare mode off clears the pair.
 
 The brain image picker is searchable and bounded regardless of upload count, with previous/next navigation
 and a selected-image preview. Display controls collapse on narrow screens so the cortex stays visible.

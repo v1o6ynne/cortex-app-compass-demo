@@ -88,8 +88,8 @@ export function VisualizationView({
           onSelectModel={onSelectSessionModel}
         />
       )}
-      <div className={`workspace-grid${compareMode ? ' workspace-grid--compare' : ''}`}>
-        <aside className={`model-browser${compareMode ? ' model-browser--compare' : ''}`} aria-label="Model browser">
+      <div className="workspace-grid">
+        <aside className="model-browser" aria-label="Model browser">
           <ControlsBar
             rois={heatmapRois}
             rankingSystem={rankingSystem}

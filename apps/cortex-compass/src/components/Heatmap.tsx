@@ -6,7 +6,6 @@ import type { AggregateHeatmapCell, Roi, SelectedHeatmapCell, SortDirection } fr
 import { inferModelCategory } from '../utils/modelTags';
 import {
   clampHeatmapTooltip,
-  COMPARE_HEATMAP_LAYOUT,
   getHeatmapLayout,
   HEATMAP_LAYOUT,
   heatmapScoreColor,
@@ -71,21 +70,16 @@ export function Heatmap({
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const hoveredCell = tooltip?.cell ?? null;
-  const layout = compareMode ? COMPARE_HEATMAP_LAYOUT : HEATMAP_LAYOUT;
-  const { margin, width, height, innerWidth, innerHeight: heatmapHeight } = getHeatmapLayout(
-    models.length,
-    rois.length,
-    layout,
-  );
+  const { margin, width, height, innerWidth, innerHeight: heatmapHeight } = getHeatmapLayout(models.length, rois.length);
   const sortToggleX = margin.left - sortToggleBoxSize - 18;
   const sortToggleY = margin.top - sortToggleBoxSize - 4;
 
   const x = scaleBand<string>().domain(rois)
-    .range([0, rois.length === 1 ? layout.columnPitch : innerWidth])
-    .paddingInner(layout.cellGap / layout.columnPitch).align(0);
+    .range([0, rois.length === 1 ? HEATMAP_LAYOUT.columnPitch : innerWidth])
+    .paddingInner(HEATMAP_LAYOUT.cellGap / HEATMAP_LAYOUT.columnPitch).align(0);
   const y = scaleBand<string>().domain(models)
-    .range([0, models.length === 1 ? layout.rowPitch : heatmapHeight])
-    .paddingInner(layout.cellGap / layout.rowPitch).align(0);
+    .range([0, models.length === 1 ? HEATMAP_LAYOUT.rowPitch : heatmapHeight])
+    .paddingInner(HEATMAP_LAYOUT.cellGap / HEATMAP_LAYOUT.rowPitch).align(0);
   const canShowLabels = showScoreLabels && x.bandwidth() >= 23.5 && y.bandwidth() >= 20;
   const labelSize = 9.5;
   const legendVals = [0, 0.5, 1];
