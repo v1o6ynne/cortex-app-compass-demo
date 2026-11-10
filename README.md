@@ -1,41 +1,72 @@
 # cortex-app
 
-Frontend for the Cortex app.
+Frontend for the Cortex app. Cortex-Compass lives in `apps/cortex-compass` in
+this same repository.
 
 ## Dev setup
 
-1. Optional: create `.env.local` in the repo root to override the built-in
-service-routing defaults or configure analytics:
+Local demo is three processes: Cortex Core, Compass, and the Lab host.
+
+1. Optional: create `.env.local` in the repo root to point the Lab at local
+Core, or to configure analytics:
 
 ```bash
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 VITE_CORTEX_CORE_URL=/cortex-core
-CORTEX_CORE_PROXY_TARGET=http://127.0.0.1:5556
-VITE_CORTEX_INFOVIZ_URL=/infoviz
-INFOVIZ_PROXY_TARGET=http://127.0.0.1:5174
+CORTEX_CORE_PROXY_TARGET=http://127.0.0.1:5557
 ```
 
-The relative Core and Cortex-Compass defaults use Vite development proxies, so Virtual Cortex and
-Cortex-Compass both work when port 5173 is opened through VS Code Remote
-SSH. Ports 5556 and 5174 do not need separate browser forwarding. Cortex-Compass's
-development base defaults to `/infoviz/` as shown in the runbook.
+`VITE_CORTEX_CORE_URL=/cortex-core` uses Vite's local Core proxy. That is
+needed here because the committed production fallback is the Cloudflare URL.
+`CORTEX_CORE_PROXY_TARGET` must match Core's `CORTEX_PORT`; use 5557 when
+5556 is already taken. Forward only port 5173 through VS Code Remote SSH.
 
-2. Install the host and visualization dependencies:
+2. Install dependencies. Vite 6 needs **Node 18+** (Node 20 is fine). On this
+lab machine, `conda activate compass` already has Node 20; the system Node 10
+install will fail `npm run dev`.
 
 ```bash
+conda activate compass
 npm ci
 npm --prefix apps/cortex-compass ci
 ```
 
-For a new checkout, use `git clone --branch IUI https://github.com/murtylab/cortex-app.git`.
+For a new checkout, use `git clone --branch IUI https://github.com/murtylab/cortex-app.git`
+(or this demo fork: `https://github.com/v1o6ynne/cortex-app-compass-demo.git`).
 
-3. Run Cortex-Compass and the host in separate terminals:
+3. Start Cortex Core before the two Vite apps. Lab inference and Compass
+comparisons both call this process. The private reference bundle is not in git;
+point `CORTEX_REFERENCE_ARTIFACT_DIR` at the unzipped directory that contains
+`manifest.json` (not the zip, not the parent folder).
 
 ```bash
+conda activate compass
+cd /research/cortex-compass/cortex-core
+
+export CORTEX_PORT=5557
+export CORTEX_HOST=0.0.0.0
+export CORTEX_REFERENCE_ARTIFACT_DIR="/research/cortex-compass/reference-bundle/reference"
+export CORTEX_ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174"
+export CORTEX_CHECKPOINT_DIR="/research/cortex-paper/cortex_best_checkpoints"
+export CORTEX_BACKBONE_DIR="/research/cortex-paper/backbones"
+export GRADIO_TEMP_DIR="./app_cache"
+export CUDA_VISIBLE_DEVICES=1
+
+python app.py
+```
+
+4. Run Compass and the Lab host in two more terminals:
+
+```bash
+conda activate compass
 npm run dev:compass
 # In another terminal:
+conda activate compass
 npm run dev
 ```
+
+Open the Lab at `http://localhost:5173/lab/`. After inference, **Open
+Cortex-Compass** opens `/cortex-compass/` in a new tab on that same origin.
 
 For a production check:
 
@@ -46,46 +77,14 @@ npm run preview
 
 ### Updating an existing IUI checkout
 
-If this checkout still uses the former Cortex-Compass submodule, complete the
-one-time conversion below before pulling this release. Once converted, update
-the host and Cortex-Compass together:
-
 ```bash
 git switch IUI
 git pull --ff-only origin IUI
 ```
 
-Restart `npm run dev:compass` and `npm run dev` in their separate terminals.
-The Compass launcher installs its dependencies when its lockfile changes; run
-`npm ci` in the host if its dependencies changed. For a built deployment, run
-`npm run build` and restart the existing serving process instead.
-
-Cortex-Compass is tracked directly in this repository, so a normal pull includes
-its source and browser data. The comparison and selectivity UI use the existing
-Core IUI backend and reference bundle; an already working backend configuration
-can stay in place.
-
-#### One-time conversion from the former submodule
-
-Git can refuse to replace an initialized submodule with ordinary tracked files
-because its existing contents would be overwritten. Preserve that directory in
-a backup outside the Cortex App checkout before pulling the conversion. The
-backup retains any local edits, environment files, dependencies, and paper
-outputs; the pull installs the bundled visualization at the same app path.
-From the Cortex App root on `IUI`:
-
-```bash
-compass_backup="$(mktemp -d "$(dirname "$PWD")/cortex-compass-before-embedded.XXXXXX")"
-mv apps/cortex-compass "$compass_backup/cortex-compass"
-git -c submodule.recurse=false pull --ff-only origin IUI
-```
-
-Keep the backup. Restore only needed local configuration or private artifacts,
-not its old tracked source or `.git` file. If the backend's reference bundle was
-inside the former submodule, point `CORTEX_REFERENCE_ARTIFACT_DIR` to the retained
-bundle or restore that ignored bundle before restarting Core. An already external
-reference bundle keeps its existing path. The frontend launcher reinstalls
-dependencies as needed. Later pulls use the normal update commands above.
+Restart `npm run dev:compass` and `npm run dev`. Run `npm ci` in the host (and
+`npm --prefix apps/cortex-compass ci` if Compass dependencies changed). For a
+built deployment, run `npm run build` and restart the serving process.
 
 Analytics setup:
 
@@ -93,8 +92,8 @@ Analytics setup:
 - The measurement ID is read from `VITE_GA_MEASUREMENT_ID`
 - Do not commit real GA keys; keep them in `.env.local`
 
-The fROI backend and Cortex-Compass handoff URLs are configured through `.env.local`
-for local development. For a public Vercel deploy, see **Public live demo** below.
+Local Lab inference uses `.env.local` only for Core (`VITE_CORTEX_CORE_URL` and
+the proxy target). For a public Vercel deploy, see **Public live demo** below.
 After a successful fROI prediction, the fifth results section, below **3D brain
 response**, offers
 **Open Cortex-Compass**. It opens `/cortex-compass/?preparing=1` in a new browser
@@ -104,9 +103,8 @@ loads its session without a separate placeholder page or reference-only preview.
 The original Lab tab and all its results remain unchanged, so users
 can switch between the two tabs. A blocked popup shows an error in the Lab; failed
 or stale preparation closes only its pending tab. No same-tab redirect is used.
-The workspace embeds the same-origin `/infoviz/?embedded=1` page without a card
-border or duplicate site masthead. Only opaque session tokens cross the
-handoff; model settings and image paths are not put in the URL.
+Only opaque session tokens cross the handoff; model settings and image paths
+are not put in the URL.
 
 Each comparison includes the selected model plus EfficientNet (`efficient_net`),
 CLIP RN50 (`clip_rn50`), and VGG16 ImageNet (`vgg16_imagenet1kv1`). Duplicate models
@@ -126,31 +124,18 @@ while preparing a comparison discards the old handoff rather than opening stale 
 Restoring an inference-history entry also restores Cortex-Compass access for that
 run and cancels any comparison still being prepared for the previous result.
 
-## Bundled Cortex-Compass
+## Cortex-Compass
 
-`apps/cortex-compass` is ordinary tracked source inside Cortex App's `IUI` branch.
-It was imported from
-[`KruthikRavikanti/InfoViz-Prototype-Edition`](https://github.com/KruthikRavikanti/InfoViz-Prototype-Edition),
-revision `8847bf97c17b3028e1bbea171a8ca8b0e96ffaa3`. That repository preserves the
-earlier development history. Current Cortex-Compass changes are committed here
-with the host; cloning or pulling Cortex App includes the visualization without
-a second repository checkout.
-
-`npm run build` builds the host and bundled visualization together. The host
-entry is `dist/cortex-compass/index.html`; the visualization and its public data
-are published under `dist/infoviz/`. `npm run preview` serves those built files
-without relying on the development visualization server. The visualization build uses
-its lockfile and installs its development/build dependencies when missing or stale.
+`apps/cortex-compass` is ordinary tracked source on the `IUI` branch. Clone or
+pull this repo and it is already there. `npm run build` builds the host and
+Compass together into `dist/`. `npm run preview` serves that combined build.
 `npm run build:site` is available for a host-only build.
 
-The standalone `/infoviz/` route and existing `INFOVIZ` environment names are
-unchanged. Keep the embedded URL same-origin (normally
-`VITE_CORTEX_INFOVIZ_URL=/infoviz`). A deployed host still needs `/cortex-core/`
-routed to the matching backend for upload comparisons; development proxies do
-not configure that production route. Bundling the frontend does not change the
-Core deployment.
+A deployed host still needs Core reachable for upload comparisons (the
+committed Cloudflare fallback, or a production `/cortex-core/` route).
+Development proxies do not configure that production route.
 
-Update the visualization in this repository and validate the combined build:
+Update Compass in this repository and validate the combined build:
 
 ```bash
 npm --prefix apps/cortex-compass test
@@ -166,17 +151,17 @@ The complete three-service startup, artifact generation, validation, and smoke-t
 [`docs/NSD_STIMULUS_CONTEXT_DEVELOPMENT.md`](docs/NSD_STIMULUS_CONTEXT_DEVELOPMENT.md).
 
 The fROI inference backend uses `VITE_CORTEX_CORE_URL` first, then the optional
-`VITE_SERVER_URL` alias; if neither is set, it uses `/cortex-core`. These are
-public endpoint settings, not secrets. The inference API contract is unchanged.
-The whole-brain service is configured separately with `VITE_CORTEX_WHOLE_BRAIN_URL`
-and defaults to `http://localhost:5557`.
+`VITE_SERVER_URL` alias. If neither is set, it uses the committed Cloudflare
+fallback in `assets/js/services/config.js`. These are public endpoint settings,
+not secrets. The inference API contract is unchanged. The whole-brain service
+is configured separately with `VITE_CORTEX_WHOLE_BRAIN_URL` and defaults to
+`http://localhost:5557`.
 
 ## Public live demo
 
 A public site is two pieces: this frontend on Vercel, and Cortex Core on the
-lab GPU machine. `npm run build` already packs Lab and Cortex-Compass into one
-`dist/` (`dist/infoviz/` for the visualization). Do not run `npm run dev` or
-`npm run dev:compass` as the public servers.
+lab GPU machine. `npm run build` packs Lab and Compass into one `dist/`. Do
+not run `npm run dev` or `npm run dev:compass` as the public servers.
 
 ### Vercel (frontend)
 
@@ -186,9 +171,6 @@ Import the GitHub repo as a **standalone Vite** app at `/`. Do not import
 - Production branch: **IUI** (not `vss`)
 - Build command: `npm run build`
 - Output directory: `dist`
-
-`apps/cortex-compass` is ordinary tracked source on IUI, so Vercel does not
-need Git submodules or a second-repo deploy key.
 
 ### Cortex Core in tmux (backend)
 
