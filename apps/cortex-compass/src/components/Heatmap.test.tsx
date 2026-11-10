@@ -85,12 +85,12 @@ describe('compact heatmap presentation', () => {
     expect(markup.match(/class="cell-score-label"/g)).toHaveLength(3);
   });
 
-  it('preserves score-toggle, selection, ranking highlight, and keyboard affordances', () => {
+  it('preserves score-toggle, selection, and keyboard affordances without an ROI bounding box', () => {
     const markup = renderToStaticMarkup(
-      <Heatmap {...defaults} selectedCell={cell} selectedRankingRoi="ffa" showScoreLabels={false} sortDirection="asc" />,
+      <Heatmap {...defaults} selectedCell={cell} showScoreLabels={false} sortDirection="asc" />,
     );
     expect(markup).toContain('heatmap-cell selected');
-    expect(markup).toContain('class="roi-column-highlight"');
+    expect(markup).not.toContain('class="roi-column-highlight"');
     expect(markup).toContain('aria-label="Sort ascending — click to toggle"');
     expect(markup).toContain('role="button" tabindex="0"');
     expect(markup).toContain('Press Enter to select.');
@@ -103,8 +103,8 @@ describe('compact heatmap presentation', () => {
       <Heatmap {...defaults} cells={[cell, unavailable]} models={['clip_rn50', 'alexnet_random']} compareMode compareCells={[cell]} />,
     );
     expect(markup).toContain('heatmap-cell compare-selected');
-    expect(markup).toContain('class="compare-cell-marker"');
-    expect(markup).toContain('>A</text>');
+    expect(markup).not.toContain('class="compare-cell-marker"');
+    expect(markup).not.toContain('>A</text>');
     expect(markup).toContain('heatmap-cell compare-disabled');
     expect(markup).toContain('aria-disabled="true"');
     expect(markup).toContain('No image-level data for comparison.');

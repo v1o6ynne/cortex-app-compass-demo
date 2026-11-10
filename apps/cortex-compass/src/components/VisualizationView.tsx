@@ -91,6 +91,12 @@ export function VisualizationView({
   }
 
   const comparingModels = guide === 'models';
+  const heatmapRoisToShow = comparingModels && rankingSystem === 'roi'
+    ? heatmapRois.filter((roi) => roi === selectedRankingRoi)
+    : heatmapRois;
+  const heatmapCellsToShow = comparingModels && rankingSystem === 'roi'
+    ? heatmapCells.filter((cell) => cell.roi === selectedRankingRoi)
+    : heatmapCells;
 
   return (
     <>
@@ -123,9 +129,9 @@ export function VisualizationView({
             onResetControls={onResetControls}
           />
           <Heatmap
-            cells={heatmapCells}
+            cells={heatmapCellsToShow}
             models={visibleModels}
-            rois={heatmapRois}
+            rois={heatmapRoisToShow}
             showScoreLabels={showScoreLabels}
             sortDirection={sortDirection}
             selectedCell={selectedCell}
@@ -135,7 +141,6 @@ export function VisualizationView({
             sessionCellIds={sessionCellIds}
             onSortDirectionToggle={onSortDirectionToggle}
             onSelectCell={onSelectCell}
-            selectedRankingRoi={rankingSystem === 'roi' ? selectedRankingRoi : null}
           />
           <HelpBox topic={comparingModels ? 'models' : 'stimuli'} />
         </aside>

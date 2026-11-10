@@ -65,25 +65,21 @@ function ImageModal({ image, onClose }: { image: EvidenceImage; onClose: () => v
 }
 
 function CellCard({
-  label, cell, evidenceView, onOpenImage,
+  cell, evidenceView, onOpenImage,
 }: {
-  label: 'A' | 'B';
   cell: SelectedHeatmapCell;
   evidenceView: ReturnType<typeof buildEvidenceView>;
   onOpenImage: (i: EvidenceImage) => void;
 }) {
   return (
-    <article className="compare-cell-card" aria-label={`Selection ${label}: ${cell.model}, ${cell.roi.toUpperCase()}`}>
+    <article className="compare-cell-card" aria-label={`${cell.model}, ${cell.roi.toUpperCase()}`}>
       <div className="compare-card-heading">
-        <span>{label}</span>
-        <div>
-          <h3>{cell.model}</h3>
-          <p>
-            <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>{cell.roi}</span>
-            {' · '}
-            <span className="model-tag">{inferModelCategory(cell.model)}</span>
-          </p>
-        </div>
+        <h3>{cell.model}</h3>
+        <p>
+          <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>{cell.roi}</span>
+          {' · '}
+          <span className="model-tag">{inferModelCategory(cell.model)}</span>
+        </p>
       </div>
       <dl className="compare-metrics">
         <div><dt>Alignment</dt><dd>{fmt(cell.score)}</dd></div>
@@ -102,7 +98,13 @@ function CellCard({
   );
 }
 
-function ClusterOverlapMatrix({ comparison }: { comparison: ClusterComparisonSummary }) {
+function ClusterOverlapMatrix({
+  comparison, nameA, nameB,
+}: {
+  comparison: ClusterComparisonSummary;
+  nameA: string;
+  nameB: string;
+}) {
   const aLabels = sortClusterLabels(Array.from(new Set(comparison.intersections.map((intersection) => intersection.aLabel))));
   const bLabels = sortClusterLabels(Array.from(new Set(comparison.intersections.map((intersection) => intersection.bLabel))));
   const countByPair = new Map(comparison.intersections.map((intersection) => [`${intersection.aLabel}\u0000${intersection.bLabel}`, intersection.count]));
@@ -116,13 +118,13 @@ function ClusterOverlapMatrix({ comparison }: { comparison: ClusterComparisonSum
         role="img"
         aria-label="Cluster overlap heatmap"
       >
-        <span className="compare-cluster-matrix-corner">A / B</span>
+        <span className="compare-cluster-matrix-corner">{nameA} / {nameB}</span>
         {bLabels.map((label) => (
-          <span className="compare-cluster-matrix-label" key={`b-${label}`}>B{label}</span>
+          <span className="compare-cluster-matrix-label" key={`b-${label}`}>{nameB} {label}</span>
         ))}
         {aLabels.map((aLabel) => (
           <Fragment key={`a-row-${aLabel}`}>
-            <span className="compare-cluster-matrix-label compare-cluster-matrix-label-row">A{aLabel}</span>
+            <span className="compare-cluster-matrix-label compare-cluster-matrix-label-row">{nameA} {aLabel}</span>
             {bLabels.map((bLabel) => {
               const count = countByPair.get(`${aLabel}\u0000${bLabel}`) ?? 0;
               const intensity = count / maxCount;
@@ -131,7 +133,7 @@ function ClusterOverlapMatrix({ comparison }: { comparison: ClusterComparisonSum
                   className="compare-cluster-matrix-cell"
                   key={`${aLabel}-${bLabel}`}
                   style={{ backgroundColor: `color-mix(in srgb, var(--accent) ${(0.08 + intensity * 0.48) * 100}%, transparent)` }}
-                  title={`A${aLabel} / B${bLabel}: ${count} images`}
+                  title={`${nameA} ${aLabel} / ${nameB} ${bLabel}: ${count} images`}
                 >
                   {count}
                 </span>
@@ -148,9 +150,13 @@ function ClusterOverlapMatrix({ comparison }: { comparison: ClusterComparisonSum
 function ClusterComparisonSection({
   status,
   comparisons,
+  nameA,
+  nameB,
 }: {
   status: ClusterComparisonStatus;
   comparisons: ClusterComparisonsByMethod;
+  nameA: string;
+  nameB: string;
 }) {
   const availableComparisons = CLUSTERING_METHODS
     .map((method) => ({ method, comparison: comparisons[method.id] ?? null }))
@@ -200,18 +206,18 @@ function ClusterComparisonSection({
               </dl>
               <details className="compare-cluster-details">
                 <summary>Overlap details</summary>
-                <p>Cluster numbers are local to A and B; compare image membership, not labels.</p>
+                <p>Cluster numbers are local to each model; compare image membership, not labels.</p>
                 <dl className="compare-cluster-metrics">
                   <div><dt>Pair agreement</dt><dd>{fmtRatio(comparison.pairAgreement)}</dd></div>
                   <div><dt>Co-cluster Jaccard</dt><dd>{fmtRatio(comparison.coClusterJaccard)}</dd></div>
                   <div><dt>Images</dt><dd>{comparison.sharedImageCount}</dd></div>
-                  <div><dt>Clusters A/B</dt><dd>{comparison.clusterCountA} / {comparison.clusterCountB}</dd></div>
+                  <div><dt>Clusters {nameA} / {nameB}</dt><dd>{comparison.clusterCountA} / {comparison.clusterCountB}</dd></div>
                 </dl>
-                <ClusterOverlapMatrix comparison={comparison} />
+                <ClusterOverlapMatrix comparison={comparison} nameA={nameA} nameB={nameB} />
                 <div className="compare-cluster-intersections">
                   {comparison.largestIntersections.map((intersection) => (
                     <span key={`${intersection.aLabel}-${intersection.bLabel}`}>
-                      A{intersection.aLabel} / B{intersection.bLabel}: {intersection.count}
+                      {nameA} {intersection.aLabel} / {nameB} {intersection.bLabel}: {intersection.count}
                     </span>
                   ))}
                 </div>
@@ -312,15 +318,15 @@ export function CompareDrawer({
         <div className="compare-drawer-heading">
           <div>
             <h2>Compare selections</h2>
-            <p>Predicted image responses for A and B.</p>
+            <p>Predicted image responses for the two selected models.</p>
           </div>
         </div>
 
         <div className="compare-drawer-body">
           {/* Side-by-side cards */}
           <div className="compare-card-grid">
-            <CellCard label="A" cell={cellA} evidenceView={evidenceA} onOpenImage={setModalImage} />
-            <CellCard label="B" cell={cellB} evidenceView={evidenceB} onOpenImage={setModalImage} />
+            <CellCard cell={cellA} evidenceView={evidenceA} onOpenImage={setModalImage} />
+            <CellCard cell={cellB} evidenceView={evidenceB} onOpenImage={setModalImage} />
           </div>
 
           <CompareResponseTools key={`${cellA.id}:${cellB.id}`} cellA={cellA} cellB={cellB}
@@ -337,13 +343,13 @@ export function CompareDrawer({
                 </span>
                 <span>Highest-response overlap: {summary.top.overlap.length}</span>
                 <span>Lowest-response overlap: {summary.bottom.overlap.length}</span>
-                <span>Alignment Δ (A−B): {fmtDiff(summary.aggregateScoreDifference)}</span>
+                <span>Alignment Δ ({cellA.model}−{cellB.model}): {fmtDiff(summary.aggregateScoreDifference)}</span>
               </div>
               <details className="compare-metric-details">
                 <summary>Response details</summary>
                 <dl className="compare-metrics">
                   <div><dt>Images ranked</dt><dd>{summary.rankSimilarity.sharedImageCount}</dd></div>
-                  <div><dt>Mean response Δ (A−B)</dt><dd>{fmtDiff(summary.imageMeanDifference)}</dd></div>
+                  <div><dt>Mean response Δ ({cellA.model}−{cellB.model})</dt><dd>{fmtDiff(summary.imageMeanDifference)}</dd></div>
                   <div><dt>Rescaled rank correlation</dt><dd>{fmtPercent(summary.rankSimilarity.similarityScore)}</dd></div>
                 </dl>
                 <p>The percentage is (ρ + 1) / 2 × 100, not the percentage of matching images.</p>
@@ -353,19 +359,19 @@ export function CompareDrawer({
                 <button type="button" onClick={handleExport}>Export JSON</button>
               </div>
 
-              <ClusterComparisonSection status={clusterComparisonStatus} comparisons={clusterComparisons} />
+              <ClusterComparisonSection status={clusterComparisonStatus} comparisons={clusterComparisons} nameA={cellA.model} nameB={cellB.model} />
 
               <details className="compare-image-details">
                 <summary>Shared &amp; unique images</summary>
                 <div className="compare-overlap-grid">
                   <ImageGrid title="Shared highest" images={summary.top.overlap} onOpenImage={setModalImage} compact />
-                  <ImageGrid title="Highest · A only" images={summary.top.uniqueA} onOpenImage={setModalImage} compact />
-                  <ImageGrid title="Highest · B only" images={summary.top.uniqueB} onOpenImage={setModalImage} compact />
+                  <ImageGrid title={`Highest · ${cellA.model} only`} images={summary.top.uniqueA} onOpenImage={setModalImage} compact />
+                  <ImageGrid title={`Highest · ${cellB.model} only`} images={summary.top.uniqueB} onOpenImage={setModalImage} compact />
                 </div>
                 <div className="compare-overlap-grid">
                   <ImageGrid title="Shared lowest" images={summary.bottom.overlap} onOpenImage={setModalImage} compact />
-                  <ImageGrid title="Lowest · A only" images={summary.bottom.uniqueA} onOpenImage={setModalImage} compact />
-                  <ImageGrid title="Lowest · B only" images={summary.bottom.uniqueB} onOpenImage={setModalImage} compact />
+                  <ImageGrid title={`Lowest · ${cellA.model} only`} images={summary.bottom.uniqueA} onOpenImage={setModalImage} compact />
+                  <ImageGrid title={`Lowest · ${cellB.model} only`} images={summary.bottom.uniqueB} onOpenImage={setModalImage} compact />
                 </div>
               </details>
             </section>

@@ -26,7 +26,6 @@ type HeatmapProps = {
   sessionCellIds: Set<string>;
   onSortDirectionToggle: () => void;
   onSelectCell: (cell: SelectedHeatmapCell) => void;
-  selectedRankingRoi?: Roi | null;
 };
 
 type TooltipState = {
@@ -65,7 +64,6 @@ export function Heatmap({
   sessionCellIds,
   onSortDirectionToggle,
   onSelectCell,
-  selectedRankingRoi = null,
 }: HeatmapProps) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -195,25 +193,6 @@ export function Heatmap({
 
             <g transform={`translate(${margin.left},${margin.top})`}>
 
-              {/* ── ROI column highlight ── */}
-              {selectedRankingRoi && (
-                <g style={{ pointerEvents: 'none' }}>
-                  <rect
-                    className="roi-column-highlight"
-                    x={(x(selectedRankingRoi) ?? 0) - 3}
-                    y={-3}
-                    width={(x.bandwidth() || 0) + 6}
-                    height={heatmapHeight + 6}
-                    fill="var(--accent-light)"
-                    fillOpacity={0.55}
-                  />
-                  <circle cx={(x(selectedRankingRoi) ?? 0) - 3}                     cy={-3}              r="5" className="roi-corner-dot" />
-                  <circle cx={(x(selectedRankingRoi) ?? 0) - 3}                     cy={heatmapHeight + 3} r="5" className="roi-corner-dot" />
-                  <circle cx={(x(selectedRankingRoi) ?? 0) + (x.bandwidth() || 0) + 3} cy={-3}              r="5" className="roi-corner-dot" />
-                  <circle cx={(x(selectedRankingRoi) ?? 0) + (x.bandwidth() || 0) + 3} cy={heatmapHeight + 3} r="5" className="roi-corner-dot" />
-                </g>
-              )}
-
               {/* ── Crosshair highlight on hover ── */}
               {hoveredCell && (
                 <>
@@ -269,11 +248,6 @@ export function Heatmap({
                       onKeyDown={(e) => handleCellKeyDown(cell, e, isComparable)}
                       onClick={() => { if (!isDisabled) onSelectCell(cell); }}
                     />
-                    {isCompareSelected && (
-                      <text className="compare-cell-marker" x={xp + 4} y={yp + 9} style={{ fontSize: '8px' }}>
-                        {cmpIdx === 0 ? 'A' : 'B'}
-                      </text>
-                    )}
                     {hasSessionEvidence && (
                       <circle
                         className="session-cell-marker"

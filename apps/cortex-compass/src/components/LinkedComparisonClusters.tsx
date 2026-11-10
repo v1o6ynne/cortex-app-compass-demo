@@ -86,13 +86,13 @@ export function LinkedComparisonClusters({ cellA, cellB, clustering, pinnedImage
           <p className="linked-cluster-reference-count">{viewA.points.length} shared reference images · colors identify each model’s clusters; compare membership, not cluster numbers.</p>
           {pinnedImages.length < 2 && <p className="linked-cluster-pin-instruction">Pin two images in the response scatterplot to follow their cluster memberships.</p>}
           <div className="linked-cluster-model-grid">
-            {[{ cell: cellA, view: viewA, label: 'A', rankKey: 'rankA' as const }, { cell: cellB, view: viewB, label: 'B', rankKey: 'rankB' as const }].map(({ cell, view, label, rankKey }) => {
+            {[{ cell: cellA, view: viewA, rankKey: 'rankA' as const }, { cell: cellB, view: viewB, rankKey: 'rankB' as const }].map(({ cell, view, rankKey }) => {
               const relationship = pinnedClusterRelationship(view, pinnedImages);
               const pins = pinnedImages.map((pin, index) => ({ pin, index, point: view.points.find((p) => p.imageName === pin.imageName) }));
               return (
                 <article className="linked-cluster-model-card" key={`${cell.model}-${cell.roi}`} data-comparison-model={cell.model}>
                   <header>
-                    <h4>{label} · {cell.model}</h4>
+                    <h4>{cell.model}</h4>
                     <span>{cell.roi.toUpperCase()} · {view.groups.length} clusters · {view.points.length} images</span>
                   </header>
                   <p className="linked-cluster-pair-result" data-pair-relationship={relationship}>

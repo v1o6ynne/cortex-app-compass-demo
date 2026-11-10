@@ -58,7 +58,7 @@ export default function App() {
   const [selectedRankingRoi, setSelectedRankingRoi] = useState<Roi>('ffa');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [modelSearch, setModelSearch] = useState('');
-  const [showScoreLabels, setShowScoreLabels] = useState(false);
+  const [showScoreLabels, setShowScoreLabels] = useState(true);
   const [selectedCell, setSelectedCell] = useState<SelectedHeatmapCell | null>(null);
   const [compareMode, setCompareMode] = useState(startingGuide === 'models');
   const [compareCells, setCompareCells] = useState<SelectedHeatmapCell[]>([]);
@@ -191,7 +191,7 @@ export default function App() {
     setSelectedRankingRoi('ffa');
     setSortDirection('desc');
     setModelSearch('');
-    setShowScoreLabels(false);
+    setShowScoreLabels(true);
     setSelectedCell(null);
     setCompareMode(guide === 'models');
     setCompareCells([]);

@@ -38,7 +38,7 @@ vi.mock('react', async (importOriginal) => {
       if (initial === null && harness.nullStates++ === 0) { value = harness.cell; key = 'cell'; }
       if (initial === 'ffa') key = 'roi';
       if (initial === '') { value = 'not-a-prepared-model'; key = 'search'; }
-      if (initial === false && harness.falseStates++ === 1) key = 'compareMode';
+      if (initial === false && harness.falseStates++ === 0) key = 'compareMode';
       if (Array.isArray(initial)) key = 'compareCells';
       return [value, (next: unknown) => { if (key) harness.changes[key] = next; }];
     },

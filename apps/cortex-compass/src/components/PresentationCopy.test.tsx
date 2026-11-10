@@ -217,15 +217,15 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     const images = closedDetails(markup, 'compare-image-details');
 
     expect(markup).toContain('Rank correlation (ρ): 0.000');
-    expect(markup).toContain('Alignment Δ (A−B): +0.200');
+    expect(markup).toContain('Alignment Δ (clip_rn50−resnet50): +0.200');
     expect(markup).toContain('Export JSON');
     expect(metrics).toContain('Images ranked</dt><dd>4');
-    expect(markup).toContain('aria-label="Selection A: clip_rn50, FFA"');
-    expect(markup).toContain('aria-label="Selection B: resnet50, FFA"');
-    expect(metrics).toContain('Mean response Δ (A−B)</dt><dd>+0.000');
+    expect(markup).toContain('aria-label="clip_rn50, FFA"');
+    expect(markup).toContain('aria-label="resnet50, FFA"');
+    expect(metrics).toContain('Mean response Δ (clip_rn50−resnet50)</dt><dd>+0.000');
     expect(metrics).toContain('Rescaled rank correlation</dt><dd>50.0%');
     expect(metrics).toContain('(ρ + 1) / 2 × 100, not the percentage of matching images');
-    for (const title of ['Shared highest', 'Highest · A only', 'Highest · B only', 'Shared lowest', 'Lowest · A only', 'Lowest · B only']) {
+    for (const title of ['Shared highest', 'Highest · clip_rn50 only', 'Highest · resnet50 only', 'Shared lowest', 'Lowest · clip_rn50 only', 'Lowest · resnet50 only']) {
       expect(images).toContain(`aria-label="${title}"`);
     }
     for (const row of rows) expect(images).toContain(`alt="${row.image_name}"`);
