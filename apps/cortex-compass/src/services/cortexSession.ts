@@ -23,7 +23,7 @@ import {
 import { publicPath } from '../utils/publicPath';
 import { getSessionModels } from '../utils/sessionModels';
 
-const DEFAULT_CORTEX_CORE_URL = '/cortex-core';
+const DEFAULT_CORTEX_CORE_URL = 'https://extra-details-contract-trustee.trycloudflare.com';
 const DEFAULT_CORTEX_APP_URL = 'http://localhost:5173';
 const PUBLIC_REFERENCE_MANIFEST_PATH = publicPath('/data/reference_manifest.json');
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;

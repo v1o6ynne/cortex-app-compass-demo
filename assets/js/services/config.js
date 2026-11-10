@@ -6,7 +6,7 @@ function configuredUrl(value, fallback) {
 // repository development layout; deployments should set the Vite variables.
 export const SERVER_URL = configuredUrl(
   import.meta.env.VITE_CORTEX_CORE_URL || import.meta.env.VITE_SERVER_URL,
-  "/cortex-core",
+  "https://extra-details-contract-trustee.trycloudflare.com",
 );
 
 export const INFOVIZ_URL = configuredUrl(
