@@ -1,9 +1,12 @@
 import { CompareDrawer } from './CompareDrawer';
 import { ControlsBar } from './ControlsBar';
 import { DetailsPanel } from './DetailsPanel';
+import { GuideLanding } from './GuideLanding';
+import { GuideSwitcher } from './GuideSwitcher';
 import { Heatmap } from './Heatmap';
 import { HelpBox } from './HelpBox';
 import { SessionBanner } from './SessionBanner';
+import { StimulusPicker } from './StimulusPicker';
 import type {
   AggregateHeatmapCell,
   ClusteringData,
@@ -14,14 +17,18 @@ import type {
   SortDirection,
   WideCsvRow,
 } from '../types/data';
+import type { CompassGuide } from '../types/guide';
 import type { CortexComparisonSession } from '../types/session';
 
 type VisualizationViewProps = {
+  guide: CompassGuide;
   rows: WideCsvRow[];
   clustering: ClusteringData;
   modelRoiColumns: ModelRoiColumn[];
   heatmapRois: Roi[];
   heatmapCells: AggregateHeatmapCell[];
+  allHeatmapCells: AggregateHeatmapCell[];
+  allModels: string[];
   visibleModels: string[];
   rankingSystem: RankingSystem;
   selectedRankingRoi: Roi;
@@ -35,6 +42,7 @@ type VisualizationViewProps = {
   session: CortexComparisonSession | null;
   focusedStimulusId: string | null;
   sessionCellIds: Set<string>;
+  onOpenGuide: (guide: CompassGuide) => void;
   onRankingSystemChange: (rankingSystem: RankingSystem) => void;
   onSelectedRankingRoiChange: (roi: Roi) => void;
   onSortDirectionToggle: () => void;
@@ -48,11 +56,14 @@ type VisualizationViewProps = {
 };
 
 export function VisualizationView({
+  guide,
   rows,
   clustering,
   modelRoiColumns,
   heatmapRois,
   heatmapCells,
+  allHeatmapCells,
+  allModels,
   visibleModels,
   rankingSystem,
   selectedRankingRoi,
@@ -66,6 +77,7 @@ export function VisualizationView({
   session,
   focusedStimulusId,
   sessionCellIds,
+  onOpenGuide,
   onRankingSystemChange,
   onSelectedRankingRoiChange,
   onSortDirectionToggle,
@@ -77,9 +89,14 @@ export function VisualizationView({
   onFocusStimulus,
   onSelectSessionModel,
 }: VisualizationViewProps) {
+  if (guide === 'home') {
+    return <GuideLanding hasSession={Boolean(session)} onOpenGuide={onOpenGuide} />;
+  }
+
   return (
     <>
-      {session && (
+      <GuideSwitcher guide={guide} onOpenGuide={onOpenGuide} />
+      {guide === 'stimuli' && session && (
         <SessionBanner
           session={session}
           focusedStimulusId={focusedStimulusId}
@@ -88,42 +105,43 @@ export function VisualizationView({
           onSelectModel={onSelectSessionModel}
         />
       )}
-      <div className="workspace-grid">
-        <aside className="model-browser" aria-label="Model browser">
-          <ControlsBar
-            rois={heatmapRois}
-            rankingSystem={rankingSystem}
-            selectedRankingRoi={selectedRankingRoi}
-            modelSearch={modelSearch}
-            showScoreLabels={showScoreLabels}
-            compareMode={compareMode}
-            compareSelectionCount={compareCells.length}
-            onRankingSystemChange={onRankingSystemChange}
-            onSelectedRankingRoiChange={onSelectedRankingRoiChange}
-            onModelSearchChange={onModelSearchChange}
-            onShowScoreLabelsChange={onShowScoreLabelsChange}
-            onCompareModeChange={onCompareModeChange}
-            onResetControls={onResetControls}
-          />
-          <Heatmap
-            cells={heatmapCells}
-            models={visibleModels}
-            rois={heatmapRois}
-            showScoreLabels={showScoreLabels}
-            sortDirection={sortDirection}
-            selectedCell={selectedCell}
-            compareMode={compareMode}
-            compareCells={compareCells}
-            comparableCellIds={comparableCellIds}
-            sessionCellIds={sessionCellIds}
-            onSortDirectionToggle={onSortDirectionToggle}
-            onSelectCell={onSelectCell}
-            selectedRankingRoi={rankingSystem === 'roi' ? selectedRankingRoi : null}
-          />
-          <HelpBox />
-        </aside>
-        {compareMode ? (
-          compareCells.length === 2 ? (
+      {guide === 'models' ? (
+        <div className="workspace-grid">
+          <aside className="model-browser" aria-label="Model browser">
+            <ControlsBar
+              rois={heatmapRois}
+              rankingSystem={rankingSystem}
+              selectedRankingRoi={selectedRankingRoi}
+              modelSearch={modelSearch}
+              showScoreLabels={showScoreLabels}
+              compareMode={compareMode}
+              compareSelectionCount={compareCells.length}
+              compareFixed
+              onRankingSystemChange={onRankingSystemChange}
+              onSelectedRankingRoiChange={onSelectedRankingRoiChange}
+              onModelSearchChange={onModelSearchChange}
+              onShowScoreLabelsChange={onShowScoreLabelsChange}
+              onCompareModeChange={onCompareModeChange}
+              onResetControls={onResetControls}
+            />
+            <Heatmap
+              cells={heatmapCells}
+              models={visibleModels}
+              rois={heatmapRois}
+              showScoreLabels={showScoreLabels}
+              sortDirection={sortDirection}
+              selectedCell={selectedCell}
+              compareMode={compareMode}
+              compareCells={compareCells}
+              comparableCellIds={comparableCellIds}
+              sessionCellIds={sessionCellIds}
+              onSortDirectionToggle={onSortDirectionToggle}
+              onSelectCell={onSelectCell}
+              selectedRankingRoi={rankingSystem === 'roi' ? selectedRankingRoi : null}
+            />
+            <HelpBox topic="models" />
+          </aside>
+          {compareCells.length === 2 ? (
             <CompareDrawer
               heatmapCells={heatmapCells}
               compareMode={compareMode}
@@ -140,10 +158,19 @@ export function VisualizationView({
                 <p>Select two heatmap cells. {compareCells.length} / 2 selected.</p>
               </div>
             </aside>
-          )
-        ) : (
+          )}
+        </div>
+      ) : (
+        <div className="workspace-grid workspace-grid--stimuli">
+          <StimulusPicker
+            models={allModels}
+            rois={heatmapRois}
+            cells={allHeatmapCells}
+            selectedCell={selectedCell}
+            onSelectCell={onSelectCell}
+          />
           <DetailsPanel
-            heatmapCells={heatmapCells}
+            heatmapCells={allHeatmapCells}
             imageCount={rows.length}
             clustering={clustering}
             modelRoiColumns={modelRoiColumns}
@@ -154,8 +181,9 @@ export function VisualizationView({
             focusedStimulusId={focusedStimulusId}
             onFocusStimulus={onFocusStimulus}
           />
-        )}
-      </div>
+          <HelpBox topic="stimuli" />
+        </div>
+      )}
     </>
   );
 }

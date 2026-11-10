@@ -29,6 +29,7 @@ import {
   inferAggregateModels,
   orderAggregateModels,
 } from './utils/heatmap';
+import { readInitialGuide, type CompassGuide } from './types/guide';
 
 type DataState =
   | { status: 'loading' }
@@ -51,6 +52,7 @@ function initialSessionState(): SessionLoadState {
 export default function App() {
   const embedded = isCortexEmbedded();
   const appShellClass = embedded ? 'app-shell app-shell--embedded' : 'app-shell';
+  const startingGuide = readInitialGuide();
   const [dataState, setDataState] = useState<DataState>({ status: 'loading' });
   const [rankingSystem, setRankingSystem] = useState<RankingSystem>('overall');
   const [selectedRankingRoi, setSelectedRankingRoi] = useState<Roi>('ffa');
@@ -58,8 +60,9 @@ export default function App() {
   const [modelSearch, setModelSearch] = useState('');
   const [showScoreLabels, setShowScoreLabels] = useState(false);
   const [selectedCell, setSelectedCell] = useState<SelectedHeatmapCell | null>(null);
-  const [compareMode, setCompareMode] = useState(false);
+  const [compareMode, setCompareMode] = useState(startingGuide === 'models');
   const [compareCells, setCompareCells] = useState<SelectedHeatmapCell[]>([]);
+  const [guide, setGuide] = useState<CompassGuide>(startingGuide);
   const [sessionState, setSessionState] = useState<SessionLoadState>(initialSessionState);
   const [focusedStimulusId, setFocusedStimulusId] = useState<string | null>(null);
   const initializedSessionVersion = useRef<string | null>(null);
@@ -152,8 +155,20 @@ export default function App() {
     }
   }
 
+  function handleOpenGuide(next: CompassGuide) {
+    if (next === 'models') {
+      setCompareMode(true);
+      setSelectedCell(null);
+    } else if (next === 'stimuli') {
+      setSelectedCell((current) => current ?? compareCells[0] ?? null);
+      setCompareMode(false);
+      setCompareCells([]);
+    }
+    setGuide(next);
+  }
+
   function handleHeatmapCellClick(cell: SelectedHeatmapCell) {
-    if (!compareMode) {
+    if (guide !== 'models' && !compareMode) {
       setSelectedCell(cell);
       return;
     }
@@ -178,7 +193,7 @@ export default function App() {
     setModelSearch('');
     setShowScoreLabels(false);
     setSelectedCell(null);
-    setCompareMode(false);
+    setCompareMode(guide === 'models');
     setCompareCells([]);
   }
 
@@ -230,6 +245,7 @@ export default function App() {
   const rankingRoi: Roi = heatmapRois.includes(selectedRankingRoi) ? selectedRankingRoi : (heatmapRois[0] ?? 'ffa');
   const orderedModels = orderAggregateModels(aggregateModels, data.scores, rankingSystem, rankingRoi, sortDirection);
   const visibleModels = filterModelsBySearch(orderedModels, modelSearch);
+  const allHeatmapCells = buildAggregateHeatmapCells(data.scores, heatmapRois, orderedModels, data.normalizedScores);
   const heatmapCells = buildAggregateHeatmapCells(data.scores, heatmapRois, visibleModels, data.normalizedScores);
   const comparableCellIds = new Set(
     heatmapCells
@@ -260,6 +276,7 @@ export default function App() {
     setModelSearch('');
     setCompareMode(false);
     setCompareCells([]);
+    setGuide('stimuli');
   }
 
   return (
@@ -274,14 +291,18 @@ export default function App() {
         compareMode={compareMode}
         compareCells={compareCells}
         session={session}
+        guide={guide}
       />
       <section className="visualization-panel" aria-label="Cortex-Compass workspace">
         <VisualizationView
+          guide={guide}
           rows={data.rows}
           clustering={data.clustering}
           modelRoiColumns={data.modelRoiColumns}
           heatmapRois={heatmapRois}
           heatmapCells={heatmapCells}
+          allHeatmapCells={allHeatmapCells}
+          allModels={orderedModels}
           visibleModels={visibleModels}
           rankingSystem={rankingSystem}
           selectedRankingRoi={rankingRoi}
@@ -295,6 +316,7 @@ export default function App() {
           session={session}
           focusedStimulusId={focusedStimulusId}
           sessionCellIds={sessionCellIds}
+          onOpenGuide={handleOpenGuide}
           onRankingSystemChange={setRankingSystem}
           onSelectedRankingRoiChange={setSelectedRankingRoi}
           onSortDirectionToggle={() => setSortDirection((currentDirection) => (currentDirection === 'desc' ? 'asc' : 'desc'))}

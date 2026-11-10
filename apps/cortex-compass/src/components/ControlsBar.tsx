@@ -8,6 +8,7 @@ type ControlsBarProps = {
   showScoreLabels: boolean;
   compareMode: boolean;
   compareSelectionCount: number;
+  compareFixed?: boolean;
   onRankingSystemChange: (rankingSystem: RankingSystem) => void;
   onSelectedRankingRoiChange: (roi: Roi) => void;
   onModelSearchChange: (searchTerm: string) => void;
@@ -24,6 +25,7 @@ export function ControlsBar({
   showScoreLabels,
   compareMode,
   compareSelectionCount,
+  compareFixed = false,
   onRankingSystemChange,
   onSelectedRankingRoiChange,
   onModelSearchChange,
@@ -76,14 +78,16 @@ export function ControlsBar({
           Show scores
         </label>
 
-        <label className="toggle-control">
-          <input
-            type="checkbox"
-            checked={compareMode}
-            onChange={(event) => onCompareModeChange(event.target.checked)}
-          />
-          Compare selections
-        </label>
+        {!compareFixed && (
+          <label className="toggle-control">
+            <input
+              type="checkbox"
+              checked={compareMode}
+              onChange={(event) => onCompareModeChange(event.target.checked)}
+            />
+            Compare selections
+          </label>
+        )}
       </div>
 
       {compareMode && (

@@ -159,7 +159,7 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     const markup = renderToStaticMarkup(<DetailsPanel {...detailsProps} />);
 
     expect(markup).toContain('Choose a model &amp; region');
-    expect(markup).toContain('Select a heatmap cell');
+    expect(markup).toContain('Choose a model and region above.');
     expect(markup).not.toMatch(/Selection:?\s*None|Loaded images/i);
     expect(markup).not.toContain('class="eyebrow"');
     expect(markup).not.toContain('to explore image responses and clusters');
@@ -232,18 +232,20 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
   });
 
   it('keeps interpretation and keyboard guidance accessible in the collapsed quick guide', () => {
-    const markup = renderToStaticMarkup(<HelpBox />);
-    const guide = closedDetails(markup, 'help-box');
+    const models = closedDetails(renderToStaticMarkup(<HelpBox topic="models" />), 'help-box');
+    const stimuli = closedDetails(renderToStaticMarkup(<HelpBox topic="stimuli" />), 'help-box');
 
-    expect(guide).toContain('Quick guide');
-    expect(guide).toContain('rows are models, columns are brain regions');
-    expect(guide).toContain('Numbers show Pearson r');
-    expect(guide).toContain('colors show score relative to the noise ceiling');
-    expect(guide).toContain('Predicted responses');
-    expect(guide).toContain('Image similarity');
-    expect(guide).toContain('Brain &amp; selectivity');
-    expect(guide).toContain('Compare selections');
-    expect(guide).toContain('right panel');
-    expect(guide).toContain('Enter');
+    expect(models).toContain('Quick guide');
+    expect(models).toContain('rows are models, columns are brain regions');
+    expect(models).toContain('Numbers show Pearson r');
+    expect(models).toContain('colors show score relative to the noise ceiling');
+    expect(models).toContain('Compare selections');
+    expect(models).toContain('right panel');
+    expect(models).toContain('Enter');
+    expect(models).not.toContain('Predicted responses');
+    expect(stimuli).toContain('Predicted responses');
+    expect(stimuli).toContain('Image similarity');
+    expect(stimuli).toContain('Brain &amp; selectivity');
+    expect(stimuli).not.toContain('Compare selections');
   });
 });

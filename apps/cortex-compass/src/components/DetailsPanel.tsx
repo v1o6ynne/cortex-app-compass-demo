@@ -247,7 +247,7 @@ export function DetailsPanel({
       <aside className="details-panel" aria-label="Details panel">
         <h2>Choose a model &amp; region</h2>
         <div className="empty-state-card">
-          <p>Select a heatmap cell.</p>
+          <p>Choose a model and region above.</p>
         </div>
       </aside>
     );

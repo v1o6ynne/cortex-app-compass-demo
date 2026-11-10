@@ -101,7 +101,7 @@ describe('Cortex-Compass masthead', () => {
     expect(markup).not.toContain('Model &amp; Stimulus Explorer');
     expect(text).toContain('Murty-185');
     expect(text).toContain('185 images');
-    expect(text).toMatch(/select.*model.*region/i);
+    expect(text).toContain('Choose a guide to compare models or investigate stimuli.');
     expect(text).not.toContain('NSD-1000');
     expect(markup).toContain('aria-label="Dataset summary"');
     expect(markup).toContain('<dt>References</dt><dd>185</dd>');

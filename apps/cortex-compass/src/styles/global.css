@@ -873,6 +873,116 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 
 .visualization-panel { animation: slide-in 160ms ease-out; }
 
+.guide-landing {
+  padding: 8px 32px 32px;
+  display: grid;
+  gap: 18px;
+}
+.guide-landing-intro {
+  margin: 0;
+  color: var(--text-3);
+  font-size: .92rem;
+}
+.guide-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.guide-card {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  min-height: 180px;
+  align-content: start;
+}
+.guide-card:hover,
+.guide-card:focus-visible {
+  border-color: var(--accent-border);
+  background: var(--accent-light);
+}
+.guide-card .eyebrow {
+  color: var(--accent);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.guide-card h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.45rem;
+  line-height: 1.25;
+}
+.guide-card p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: .86rem;
+  line-height: 1.55;
+}
+.guide-landing-session {
+  margin: 0;
+  color: var(--text-3);
+  font-size: .82rem;
+}
+.guide-inline-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.guide-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 16px;
+  padding: 0 32px;
+  margin-bottom: 12px;
+}
+.guide-switcher-home,
+.guide-switcher-other {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.guide-switcher-home:hover,
+.guide-switcher-other:hover,
+.guide-switcher-home:focus-visible,
+.guide-switcher-other:focus-visible {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+}
+.guide-switcher-current {
+  flex: 1 1 220px;
+  color: var(--text);
+  font-size: .88rem;
+  font-weight: 650;
+}
+
+.workspace-grid--stimuli {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspace-grid--stimuli .help-box { margin: 0; }
+.stimulus-picker {
+  grid-template-columns: minmax(0, 1.4fr) minmax(120px, .6fr);
+}
+
 @keyframes slide-in {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0);   }
@@ -2601,6 +2711,9 @@ button.cluster-size-chip:hover {
   .details-panel  { position: static; max-height: none; }
   .heatmap-scroll { max-height: 350px; }
   .controls-bar   { position: static; }
+  .guide-card-grid { grid-template-columns: 1fr; }
+  .guide-landing,
+  .guide-switcher { padding-left: 20px; padding-right: 20px; }
 }
 
 @media (max-width: 980px) {

@@ -3,6 +3,7 @@ import type { SelectedHeatmapCell } from '../types/data';
 import type { CortexComparisonSession } from '../types/session';
 import { isStochasticReferenceModel, STOCHASTIC_REFERENCE_NOTE } from '../utils/predictionPolicy';
 import { getCortexNavigationTarget, requestCortexReturnToLab } from '../services/cortexEmbedding';
+import { GUIDE_COPY, type CompassGuide } from '../types/guide';
 import { getSessionModels } from '../utils/sessionModels';
 
 type HeaderProps = {
@@ -15,6 +16,7 @@ type HeaderProps = {
   compareCells?: SelectedHeatmapCell[];
   session?: CortexComparisonSession | null;
   embedded?: boolean;
+  guide?: CompassGuide;
 };
 
 function mappingLabel(dataset: string): string {
@@ -33,6 +35,7 @@ export function Header({
   compareCells = [],
   session = null,
   embedded = false,
+  guide = 'home',
 }: HeaderProps) {
   const cortexHome = `${(import.meta.env.VITE_CORTEX_APP_URL?.trim() || '/').replace(/\/+$/, '')}/`;
   const cortexLab = `${cortexHome}lab/`;
@@ -93,7 +96,13 @@ export function Header({
                   <strong>Upload comparison:</strong> {session.comparison.model} · {mappingLabel(session.comparison.dataset)} ·{' '}
                   {session.comparison.rois.map((roi) => roi.toUpperCase()).join(', ')}
                 </span>
-              ) : <span>Select a model and region to explore predictions.</span>}
+              ) : <span>{
+                guide === 'home'
+                  ? 'Choose a guide to compare models or investigate stimuli.'
+                  : guide === 'models'
+                    ? GUIDE_COPY.models.description
+                    : GUIDE_COPY.stimuli.description
+              }</span>}
             </p>
             {session && !labSettingsMatchView && (
               <p className="lede header-lab-settings">

@@ -74,11 +74,15 @@ function visualizationFixture(): VisualizationData {
   };
 }
 
-function renderExplorer(selectedCell: SelectedHeatmapCell | null = null, embedded = false): string {
+function renderExplorer(selectedCell: SelectedHeatmapCell | null = null, embedded = false, guide?: 'models' | 'stimuli'): string {
   appState.data = visualizationFixture();
   appState.selectedCell = selectedCell;
   appState.nullStatesSeen = 0;
-  vi.stubGlobal('window', { location: { hash: '', search: embedded ? '?embedded=1' : '' }, parent: embedded ? { postMessage: vi.fn() } : undefined });
+  const params = new URLSearchParams();
+  if (embedded) params.set('embedded', '1');
+  if (guide) params.set('guide', guide);
+  const search = params.toString() ? `?${params}` : '';
+  vi.stubGlobal('window', { location: { hash: '', search }, parent: embedded ? { postMessage: vi.fn() } : undefined });
   return renderToStaticMarkup(<App />);
 }
 
@@ -99,27 +103,44 @@ describe('Cortex-Compass application', () => {
     expect(markup).not.toContain('Loading the explorer');
   });
 
-  it('opens the explorer directly with Cortex navigation and all model controls', () => {
+  it('opens on two research guides instead of the former combined explorer', () => {
     const markup = renderExplorer();
 
     expect(markup).toContain('<section class="visualization-panel" aria-label="Cortex-Compass workspace">');
     expect(markup).toContain('<h1>Cortex-Compass</h1>');
     expect(markup).toContain('Murty-185 (2 images)');
-    expect(markup).toContain('Select a model and region to explore predictions.');
+    expect(markup).toContain('Choose a guide to compare models or investigate stimuli.');
+    expect(markup).toContain('aria-label="Cortex-Compass guides"');
+    expect(markup).toContain('Which model should I use?');
+    expect(markup).toContain('What stimuli should I investigate next?');
+    expect(markup).toContain('Guide model selection');
+    expect(markup).toContain('Guide iterative stimulus design');
     expect(markup).toContain('aria-label="Cortex navigation"');
     expect(markup).toContain('Back to the Lab');
-    expect(markup).toContain('aria-label="Model controls"');
-    expect(markup).toContain('Search models');
-    expect(markup).toContain('Rank models');
-    expect(markup).toContain('Show scores');
-    expect(markup).toContain('Compare selections');
-    expect(markup).toContain('aria-label="Heatmap area"');
-    expect(markup.match(/data-cell-id="(?:ffa|eba|ppa)__clip_rn50"/g)).toHaveLength(3);
+    expect(markup).not.toContain('aria-label="Model controls"');
+    expect(markup).not.toContain('aria-label="Heatmap area"');
     expect(markup).not.toContain('User Study');
     expect(markup).not.toContain('user-study');
     expect(markup).not.toContain('aria-label="Primary views"');
     expect(markup).not.toContain('<iframe');
     expect(markup).not.toContain('docs.google.com/forms');
+  });
+
+  it('keeps model alignment and comparison in the model-selection guide', () => {
+    const markup = renderExplorer(null, false, 'models');
+
+    expect(markup).toContain('aria-label="Guide navigation"');
+    expect(markup).toContain('Which model should I use?');
+    expect(markup).toContain('aria-label="Model controls"');
+    expect(markup).toContain('Search models');
+    expect(markup).toContain('Rank models');
+    expect(markup).toContain('Show scores');
+    expect(markup).toContain('0 / 2 selected');
+    expect(markup).toContain('aria-label="Heatmap area"');
+    expect(markup.match(/data-cell-id="(?:ffa|eba|ppa)__clip_rn50"/g)).toHaveLength(3);
+    expect(markup).toContain('Select two heatmap cells.');
+    expect(markup).not.toContain('Predicted responses');
+    expect(markup).not.toContain('Compare selections</label>');
   });
 
   it('preserves the explorer under the host header without a second navigation bar', () => {
@@ -128,8 +149,7 @@ describe('Cortex-Compass application', () => {
     expect(markup).toContain('<main class="app-shell app-shell--embedded">');
     expect(markup).toContain('<h1>Cortex-Compass</h1>');
     expect(markup).toContain('Murty-185 (2 images)');
-    expect(markup).toContain('aria-label="Model controls"');
-    expect(markup).toContain('aria-label="Heatmap area"');
+    expect(markup).toContain('aria-label="Cortex-Compass guides"');
     expect(markup).not.toContain('class="app-masthead"');
     expect(markup).not.toContain('Back to the Lab');
     expect(markup).not.toContain('<iframe');
@@ -164,7 +184,7 @@ describe('Cortex-Compass application', () => {
     const markup = renderExplorer({
       id: 'ffa__clip_rn50', model: 'clip_rn50', roi: 'ffa',
       score: 0.8, overallScore: 0.7, rankWithinRoi: 1,
-    });
+    }, false, 'stimuli');
 
     expect(markup).toContain('<strong>Viewing:</strong> clip_rn50 · FFA · NSD-1000 predictions');
     expect(markup).toContain('class="detail-subtabs"');
