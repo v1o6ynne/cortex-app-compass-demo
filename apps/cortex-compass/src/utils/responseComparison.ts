@@ -8,12 +8,15 @@ export type SharedResponsePoint = {
   meanB: number;
   rankA: number;
   rankB: number;
+  /** rankB − rankA; negative means B ranks the image higher (lower rank number). */
+  rankDelta: number;
+  absRankDelta: number;
   zA: number;
   zB: number;
-  /** Standardized response in model B minus model A. */
+  /** Kept for mean-gap diagnostics; no longer drives the univariate highlight. */
   gap: number;
-  /** The two largest gaps in each signed direction. */
-  gapDirection: 'a' | 'b' | null;
+  /** Which model ranks this image higher among the largest |Δrank| highlights. */
+  rankLead: 'a' | 'b' | null;
 };
 
 export type SharedResponseComparison = {
@@ -28,6 +31,8 @@ export type SharedResponseComparison = {
   rankSpearman: number | null;
   unavailableReason: string | null;
 };
+
+const RANK_HIGHLIGHT_COUNT = 8;
 
 function compensatedSum(values: number[]): number {
   let sum = 0;
@@ -97,18 +102,20 @@ export function buildSharedResponseComparison(
     const imageB = bByImage.get(imageName)!;
     const zA = (imageA.value - a.mean) / a.sd;
     const zB = (imageB.value - b.mean) / b.sd;
+    const rankDelta = imageB.rank - imageA.rank;
     return {
       imageId: imageName.replace(/\.png$/i, ''), imageName, imageUrl: imageA.imageUrl,
       meanA: imageA.value, meanB: imageB.value, rankA: imageA.rank, rankB: imageB.rank,
-      zA, zB, gap: zB - zA, gapDirection: null,
+      rankDelta, absRankDelta: Math.abs(rankDelta),
+      zA, zB, gap: zB - zA, rankLead: null,
     };
   });
-  const positive = points.filter(point => point.gap > 0)
-    .sort((aPoint, bPoint) => bPoint.gap - aPoint.gap || aPoint.imageName.localeCompare(bPoint.imageName));
-  const negative = points.filter(point => point.gap < 0)
-    .sort((aPoint, bPoint) => aPoint.gap - bPoint.gap || aPoint.imageName.localeCompare(bPoint.imageName));
-  for (const point of positive.slice(0, 2)) point.gapDirection = 'b';
-  for (const point of negative.slice(0, 2)) point.gapDirection = 'a';
+
+  for (const point of topRankDisagreements(points, RANK_HIGHLIGHT_COUNT)) {
+    if (point.rankDelta === 0) continue;
+    point.rankLead = point.rankDelta > 0 ? 'a' : 'b';
+  }
+
   return {
     points,
     meanA: a.mean,
@@ -119,6 +126,15 @@ export function buildSharedResponseComparison(
     rankSpearman: pearsonOfPairs(points.map((point) => point.rankA), points.map((point) => point.rankB)),
     unavailableReason: null,
   };
+}
+
+/** Largest absolute rank disagreements; ties break by filename. */
+export function topRankDisagreements(points: SharedResponsePoint[], limit = RANK_HIGHLIGHT_COUNT): SharedResponsePoint[] {
+  return [...points]
+    .filter((point) => point.absRankDelta > 0)
+    .sort((left, right) => right.absRankDelta - left.absRankDelta
+      || left.imageName.localeCompare(right.imageName))
+    .slice(0, limit);
 }
 
 function pearsonOfPairs(aValues: number[], bValues: number[]): number | null {
@@ -140,7 +156,17 @@ function pearsonOfPairs(aValues: number[], bValues: number[]): number | null {
   return Math.max(-1, Math.min(1, numerator / denominator));
 }
 
-/** Use this same domain for both axes; one standardized unit has equal length. */
+/** Shared rank axis domain: rank 1 at the origin end, padded slightly. */
+export function rankAxisDomain(points: SharedResponsePoint[]): [number, number] {
+  if (points.length === 0) return [1, 2];
+  const ranks = points.flatMap((point) => [point.rankA, point.rankB]).filter(Number.isFinite);
+  if (ranks.length === 0) return [1, 2];
+  const maxRank = Math.max(...ranks);
+  const padding = Math.max(maxRank * 0.03, 1);
+  return [1 - padding * 0.15, maxRank + padding];
+}
+
+/** @deprecated Prefer rankAxisDomain for the univariate rank scatter. */
 export function responseAxisDomain(points: SharedResponsePoint[]): [number, number] {
   if (points.length === 0) return [-1, 1];
   const values = points.flatMap(point => [point.zA, point.zB]).filter(Number.isFinite);

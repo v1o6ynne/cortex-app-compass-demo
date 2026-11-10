@@ -68,8 +68,8 @@ export function CompareResponseTools({ cellA, cellB, evidenceA, evidenceB, onOpe
                 <div>
                   <h3 className="compare-analysis-title">Univariate · ROI mean responses</h3>
                   <p className="compare-analysis-note">
-                    Each point is one shared reference image. Axes are z-scored mean predicted responses
-                    within the selected ROI—collapsed across voxels.
+                    Rank–rank scatter compares how the two models order the same images by ROI-mean
+                    prediction (voxels collapsed). The list highlights the largest absolute rank shifts.
                   </p>
                 </div>
                 <div className="compare-metric-badges" aria-label="Univariate summary metrics">

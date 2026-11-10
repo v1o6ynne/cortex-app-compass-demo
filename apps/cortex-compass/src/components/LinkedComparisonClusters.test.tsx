@@ -7,7 +7,8 @@ import { pinnedClusterRelationship } from './LinkedComparisonClusters';
 
 const pin = (name: string): SharedResponsePoint => ({
   imageId: name.replace('.png', ''), imageName: name, imageUrl: `/images/${name}`,
-  meanA: 0, meanB: 0, rankA: 1, rankB: 1, zA: 0, zB: 0, gap: 0, gapDirection: null,
+  meanA: 0, meanB: 0, rankA: 1, rankB: 1, rankDelta: 0, absRankDelta: 0,
+  zA: 0, zB: 0, gap: 0, rankLead: null,
 });
 const pins = [pin('image_101.png'), pin('image_026.png')];
 function view(labels: string[]): ClusterView {

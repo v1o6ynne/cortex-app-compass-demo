@@ -1,7 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceImage, SelectedHeatmapCell } from '../types/data';
-import { responseAxisDomain, type SharedResponsePoint } from '../utils/responseComparison';
+import {
+  rankAxisDomain,
+  topRankDisagreements,
+  type SharedResponsePoint,
+} from '../utils/responseComparison';
 
 export function comparisonModelLabel(model: string): string {
   return ({ clip_rn50: 'CLIP RN50', clip_rn101: 'CLIP RN101', clip_vit_b32: 'CLIP ViT-B/32' } as Record<string, string>)[model] ?? model;
@@ -22,6 +26,20 @@ const LEFT = 72;
 const TOP = 24;
 const SIDE = 400;
 
+function rankTicks(low: number, high: number): number[] {
+  const start = Math.max(1, Math.ceil(low));
+  const end = Math.floor(high);
+  if (end <= start) return [start];
+  const span = end - start;
+  const step = span <= 10 ? 1 : span <= 40 ? 5 : span <= 100 ? 20 : 40;
+  const ticks = [1];
+  for (let tick = start - ((start - 1) % step) + (start === 1 ? step : 0); tick <= end; tick += step) {
+    if (tick > 1) ticks.push(tick);
+  }
+  if (ticks[ticks.length - 1] !== end) ticks.push(end);
+  return ticks;
+}
+
 export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Props) {
   type Preview = { point: SharedResponsePoint; x: number; y: number };
   const [hoverPreview, setHoverPreview] = useState<Preview | null>(null);
@@ -30,12 +48,17 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
   const previewVisible = preview !== null;
   const tooltipId = useId();
   const figureRef = useRef<HTMLElement>(null);
-  const [low, high] = responseAxisDomain(points);
+  const [low, high] = rankAxisDomain(points);
   const scaleX = (value: number) => LEFT + (value - low) / (high - low) * SIDE;
   const scaleY = (value: number) => TOP + SIDE - (value - low) / (high - low) * SIDE;
   const aLabel = comparisonModelLabel(cellA.model);
   const bLabel = comparisonModelLabel(cellB.model);
-  const ticks = Array.from({ length: Math.floor(high) - Math.ceil(low) + 1 }, (_, index) => Math.ceil(low) + index);
+  const ticks = rankTicks(low, high);
+  const disagreements = useMemo(() => topRankDisagreements(points, 8), [points]);
+  const highlighted = useMemo(
+    () => new Set(disagreements.map((point) => point.imageName)),
+    [disagreements],
+  );
 
   function openPoint(point: SharedResponsePoint) {
     onOpenImage({
@@ -43,7 +66,7 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
       imageUrl: point.imageUrl,
       value: point.meanA,
       rank: point.rankA,
-      valueLabel: `${aLabel} #${point.rankA} · ${bLabel} #${point.rankB}`,
+      valueLabel: `${aLabel} #${point.rankA} · ${bLabel} #${point.rankB} · Δrank ${point.rankDelta >= 0 ? '+' : ''}${point.rankDelta}`,
     });
   }
 
@@ -61,10 +84,9 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
   function showPreview(point: SharedResponsePoint, element: SVGElement, trigger: 'hover' | 'focus') {
     const rect = element.getBoundingClientRect();
     const width = 270;
-    const height = 270;
     const next = { point,
       x: Math.max(8, Math.min(window.innerWidth - width - 8, rect.right + 14)),
-      y: Math.max(8, Math.min(window.innerHeight - height - 8, rect.top - 90)),
+      y: Math.max(8, Math.min(window.innerHeight - 270 - 8, rect.top - 90)),
     };
     if (trigger === 'focus') { setHoverPreview(null); setFocusPreview(next); }
     else setHoverPreview(next);
@@ -76,86 +98,158 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
     nodes[(index + delta + nodes.length) % nodes.length].focus();
   }
 
+  const orderedPoints = [
+    ...points.filter((point) => !highlighted.has(point.imageName)),
+    ...points.filter((point) => highlighted.has(point.imageName)),
+  ];
+
   return (
-    <section className="compare-response-section" aria-label="Predicted response scatterplot">
+    <section className="compare-response-section" aria-label="Response rank scatterplot">
       <div className="compare-response-intro">
-        <h3>Relative predicted means</h3>
-        <span>{points.length} shared reference images · points near y = x agree</span>
+        <h3>Response rank comparison</h3>
+        <span>{points.length} shared images · near the diagonal = similar ranking</span>
       </div>
       <div className="compare-response-layout">
         <figure className="compare-response-figure" ref={figureRef}>
-          <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`${aLabel} versus ${bLabel} standardized predicted mean responses`}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`${aLabel} versus ${bLabel} response ranks`}>
             <rect x={LEFT} y={TOP} width={SIDE} height={SIDE} className="compare-response-frame" />
-            {ticks.map(tick => <g key={tick} className="compare-response-axis">
-              <line x1={scaleX(tick)} y1={TOP} x2={scaleX(tick)} y2={TOP + SIDE} />
-              <line x1={LEFT} y1={scaleY(tick)} x2={LEFT + SIDE} y2={scaleY(tick)} />
-              <text x={scaleX(tick)} y={TOP + SIDE + 20} textAnchor="middle">{tick}</text>
-              <text x={LEFT - 12} y={scaleY(tick) + 4} textAnchor="end">{tick}</text>
-            </g>)}
-            <line className="compare-response-identity" x1={LEFT} y1={TOP + SIDE} x2={LEFT + SIDE} y2={TOP} />
-            <text className="compare-response-identity-label" x={LEFT + SIDE - 12} y={TOP + 18} textAnchor="end">agreement</text>
-            {/* Render highlighted points last so dense neighbors do not cover them. */}
-            {[...points.filter(p => !p.gapDirection), ...points.filter(p => p.gapDirection)].map((point, index) => {
-              const color = point.gapDirection === 'b' ? BLUE : point.gapDirection === 'a' ? RED : '#929292';
-              return <g key={point.imageName}
-                role="button" tabIndex={0}
-                data-response-image={point.imageId}
-                data-gap-direction={point.gapDirection ?? ''}
-                data-z-a={point.zA} data-z-b={point.zB} data-z-gap={point.gap}
-                data-rank-a={point.rankA} data-rank-b={point.rankB}
-                aria-label={`${point.imageId}; ${aLabel} rank ${point.rankA}, z ${point.zA.toFixed(3)}; ${bLabel} rank ${point.rankB}, z ${point.zB.toFixed(3)}`}
-                aria-describedby={preview?.point.imageName === point.imageName ? tooltipId : undefined}
-                onMouseEnter={event => showPreview(point, event.currentTarget, 'hover')}
-                onMouseLeave={() => setHoverPreview(null)}
-                onFocus={event => showPreview(point, event.currentTarget, 'focus')}
-                onBlur={() => setFocusPreview(null)}
-                onClick={() => openPoint(point)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPoint(point); }
-                  if (event.key === 'Escape') {
-                    setHoverPreview(null); setFocusPreview(null);
-                  }
-                  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); moveFocus(index, 1); }
-                  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); moveFocus(index, -1); }
-                }}>
-                <circle className="compare-response-hit" cx={scaleX(point.zA)} cy={scaleY(point.zB)} r={7} />
-                <circle className="compare-response-point" cx={scaleX(point.zA)} cy={scaleY(point.zB)}
-                  r={point.gapDirection ? 5.4 : 3.8} fill={color} opacity={point.gapDirection ? 1 : .65} />
-              </g>;
+            {ticks.map((tick) => (
+              <g key={tick} className="compare-response-axis">
+                <line x1={scaleX(tick)} y1={TOP} x2={scaleX(tick)} y2={TOP + SIDE} />
+                <line x1={LEFT} y1={scaleY(tick)} x2={LEFT + SIDE} y2={scaleY(tick)} />
+                <text x={scaleX(tick)} y={TOP + SIDE + 20} textAnchor="middle">#{tick}</text>
+                <text x={LEFT - 12} y={scaleY(tick) + 4} textAnchor="end">#{tick}</text>
+              </g>
+            ))}
+            <line
+              className="compare-response-identity"
+              x1={scaleX(Math.max(low, 1))}
+              y1={scaleY(Math.max(low, 1))}
+              x2={scaleX(Math.min(high, Math.max(...points.flatMap((point) => [point.rankA, point.rankB]))))}
+              y2={scaleY(Math.min(high, Math.max(...points.flatMap((point) => [point.rankA, point.rankB]))))}
+            />
+            <text className="compare-response-identity-label" x={LEFT + SIDE - 12} y={TOP + 18} textAnchor="end">equal rank</text>
+            {orderedPoints.map((point, index) => {
+              const isHighlight = highlighted.has(point.imageName);
+              const color = point.rankLead === 'b' ? BLUE : point.rankLead === 'a' ? RED : '#929292';
+              return (
+                <g
+                  key={point.imageName}
+                  role="button"
+                  tabIndex={0}
+                  data-response-image={point.imageId}
+                  data-rank-lead={point.rankLead ?? ''}
+                  data-rank-a={point.rankA}
+                  data-rank-b={point.rankB}
+                  data-rank-delta={point.rankDelta}
+                  aria-label={`${point.imageId}; ${aLabel} rank ${point.rankA}; ${bLabel} rank ${point.rankB}; Δrank ${point.rankDelta}`}
+                  aria-describedby={preview?.point.imageName === point.imageName ? tooltipId : undefined}
+                  onMouseEnter={(event) => showPreview(point, event.currentTarget, 'hover')}
+                  onMouseLeave={() => setHoverPreview(null)}
+                  onFocus={(event) => showPreview(point, event.currentTarget, 'focus')}
+                  onBlur={() => setFocusPreview(null)}
+                  onClick={() => openPoint(point)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPoint(point); }
+                    if (event.key === 'Escape') {
+                      setHoverPreview(null); setFocusPreview(null);
+                    }
+                    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); moveFocus(index, 1); }
+                    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); moveFocus(index, -1); }
+                  }}
+                >
+                  <circle className="compare-response-hit" cx={scaleX(point.rankA)} cy={scaleY(point.rankB)} r={7} />
+                  <circle
+                    className="compare-response-point"
+                    cx={scaleX(point.rankA)}
+                    cy={scaleY(point.rankB)}
+                    r={isHighlight ? 5.4 : 3.8}
+                    fill={color}
+                    opacity={isHighlight ? 1 : 0.55}
+                  />
+                </g>
+              );
             })}
-            <text className="compare-response-axis-title" x={LEFT + SIDE / 2} y={H - 20} textAnchor="middle">{aLabel} · {cellA.roi.toUpperCase()} (z-score)</text>
-            <text className="compare-response-axis-title" transform={`translate(19,${TOP + SIDE / 2}) rotate(-90)`} textAnchor="middle">{bLabel} · {cellB.roi.toUpperCase()} (z-score)</text>
+            <text className="compare-response-axis-title" x={LEFT + SIDE / 2} y={H - 20} textAnchor="middle">
+              {aLabel} · {cellA.roi.toUpperCase()} rank
+            </text>
+            <text className="compare-response-axis-title" transform={`translate(19,${TOP + SIDE / 2}) rotate(-90)`} textAnchor="middle">
+              {bLabel} · {cellB.roi.toUpperCase()} rank
+            </text>
           </svg>
-          <figcaption>Each model standardized separately across shared references. Dashed line: equal z-scores.</figcaption>
+          <figcaption>Rank 1 = highest predicted ROI mean. Dashed line: identical ranks. Color marks the largest |Δrank| images.</figcaption>
         </figure>
-        <div className="compare-gap-examples" aria-label="Largest standardized response gaps">
-          {(['b', 'a'] as const).map(direction => <section key={direction} className={`compare-gap-group compare-gap-group--${direction}`}>
-            <h4>Higher relative response in {direction === 'b' ? bLabel : aLabel}</h4>
-            <div className="compare-gap-grid">
-              {points.filter(p => p.gapDirection === direction).sort((a, b) => direction === 'b' ? b.gap - a.gap : a.gap - b.gap).map(point => <button
-                type="button" className="compare-gap-example" key={point.imageName}
-                onClick={() => openPoint(point)}
-                aria-label={`Open ${point.imageId}`}>
-                <img src={point.imageUrl} alt={point.imageId} />
-                <strong>{point.imageId}</strong>
-                <span>{aLabel} #{point.rankA} · {bLabel} #{point.rankB}</span>
-                <span>Δz {point.gap >= 0 ? '+' : ''}{point.gap.toFixed(3)}</span>
-              </button>)}
+
+        <div className="compare-gap-examples" aria-label="Largest rank disagreements">
+          <section className="compare-rank-disagreement-list">
+            <h4>Largest |Δrank|</h4>
+            <div className="compare-rank-disagreement-grid">
+              {disagreements.map((point) => {
+                const aPos = Math.min(point.rankA, point.rankB);
+                const bPos = Math.max(point.rankA, point.rankB);
+                const maxRank = Math.max(...points.flatMap((entry) => [entry.rankA, entry.rankB]), 1);
+                const leftPct = ((aPos - 1) / Math.max(maxRank - 1, 1)) * 100;
+                const widthPct = ((bPos - aPos) / Math.max(maxRank - 1, 1)) * 100;
+                const aIsLeft = point.rankA <= point.rankB;
+                return (
+                  <button
+                    type="button"
+                    className={`compare-rank-disagreement compare-rank-disagreement--${point.rankLead ?? 'tie'}`}
+                    key={point.imageName}
+                    onClick={() => openPoint(point)}
+                    aria-label={`Open ${point.imageId}; Δrank ${point.rankDelta}`}
+                  >
+                    <img src={point.imageUrl} alt="" />
+                    <div className="compare-rank-disagreement-body">
+                      <strong>{point.imageId}</strong>
+                      <span>{aLabel} #{point.rankA} → {bLabel} #{point.rankB}</span>
+                      <span className="compare-rank-delta">
+                        Δrank {point.rankDelta >= 0 ? '+' : ''}{point.rankDelta}
+                        {point.rankLead === 'a' ? ` · higher in ${aLabel}` : point.rankLead === 'b' ? ` · higher in ${bLabel}` : ''}
+                      </span>
+                      <div className="compare-rank-dumbbell" aria-hidden="true">
+                        <span className="compare-rank-dumbbell-track" />
+                        <span
+                          className="compare-rank-dumbbell-span"
+                          style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1.5)}%` }}
+                        />
+                        <span
+                          className={`compare-rank-dumbbell-dot compare-rank-dumbbell-dot--a${aIsLeft ? ' is-left' : ' is-right'}`}
+                          style={{ left: `${((point.rankA - 1) / Math.max(maxRank - 1, 1)) * 100}%` }}
+                        />
+                        <span
+                          className={`compare-rank-dumbbell-dot compare-rank-dumbbell-dot--b${aIsLeft ? ' is-right' : ' is-left'}`}
+                          style={{ left: `${((point.rankB - 1) / Math.max(maxRank - 1, 1)) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          </section>)}
-          <p>Color marks the two largest gaps in each direction.</p>
+            {disagreements.length === 0 ? (
+              <p>No rank disagreements on the shared references.</p>
+            ) : (
+              <p>Top 8 absolute rank shifts. Red = ranked higher by {aLabel}; blue = ranked higher by {bLabel}.</p>
+            )}
+          </section>
         </div>
       </div>
-      {preview && createPortal(<div className="compare-response-tooltip" id={tooltipId} role="tooltip"
-        style={{ left: preview.x, top: preview.y }}>
-        <img src={preview.point.imageUrl} alt="" />
-        <strong>{preview.point.imageId}</strong>
-        <table><thead><tr><th>Model</th><th>Rank</th><th>z-score</th></tr></thead><tbody>
-          <tr><th>{aLabel}</th><td>#{preview.point.rankA}</td><td>{preview.point.zA.toFixed(3)}</td></tr>
-          <tr><th>{bLabel}</th><td>#{preview.point.rankB}</td><td>{preview.point.zB.toFixed(3)}</td></tr>
-        </tbody></table>
-        <span>Click or press Enter to open the image.</span>
-      </div>, document.body)}
+      {preview && createPortal(
+        <div className="compare-response-tooltip" id={tooltipId} role="tooltip" style={{ left: preview.x, top: preview.y }}>
+          <img src={preview.point.imageUrl} alt="" />
+          <strong>{preview.point.imageId}</strong>
+          <table>
+            <thead><tr><th>Model</th><th>Rank</th><th>Mean</th></tr></thead>
+            <tbody>
+              <tr><th>{aLabel}</th><td>#{preview.point.rankA}</td><td>{preview.point.meanA.toFixed(3)}</td></tr>
+              <tr><th>{bLabel}</th><td>#{preview.point.rankB}</td><td>{preview.point.meanB.toFixed(3)}</td></tr>
+            </tbody>
+          </table>
+          <span>Δrank {preview.point.rankDelta >= 0 ? '+' : ''}{preview.point.rankDelta}. Click to open.</span>
+        </div>,
+        document.body,
+      )}
     </section>
   );
 }

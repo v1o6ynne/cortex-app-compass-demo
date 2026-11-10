@@ -142,7 +142,8 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     expect(markup).toContain('Univariate');
     expect(markup).toContain('Multivariate');
     expect(markup).toContain('Univariate · ROI mean responses');
-    expect(markup).toContain('Relative predicted means');
+    expect(markup).toContain('Response rank comparison');
+    expect(markup).toContain('Largest |Δrank|');
     expect(markup).not.toContain('Pinned stimuli');
     expect(markup).not.toContain('Choose up to two images');
     expect(markup).not.toContain('compare-modal-backdrop');
