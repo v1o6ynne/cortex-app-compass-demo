@@ -21,13 +21,11 @@ import { CompareResponseTools } from './CompareResponseTools';
 type CompareDrawerProps = {
   compareMode: boolean;
   compareCells: SelectedHeatmapCell[];
-  isOpen: boolean;
   clustering: ClusteringData;
   heatmapCells: AggregateHeatmapCell[];
   rows: WideCsvRow[];
   modelRoiColumns: ModelRoiColumn[];
   topK: number;
-  onDismiss: () => void;
 };
 
 type ClusterComparisonStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -227,7 +225,7 @@ function ClusterComparisonSection({
 }
 
 export function CompareDrawer({
-  compareMode, compareCells, isOpen, clustering, heatmapCells, rows, modelRoiColumns, topK, onDismiss,
+  compareMode, compareCells, clustering, heatmapCells, rows, modelRoiColumns, topK,
 }: CompareDrawerProps) {
   const [modalImage, setModalImage] = useState<EvidenceImage | null>(null);
   const [clusterComparisonStatus, setClusterComparisonStatus] = useState<ClusterComparisonStatus>('idle');
@@ -249,13 +247,6 @@ export function CompareDrawer({
     () => (cellA && cellB ? findSharedCompareNeighbors(cellA, evidenceA, cellB, evidenceB, heatmapCells, rows, modelRoiColumns, topK) : []),
     [cellA, cellB, evidenceA, evidenceB, heatmapCells, modelRoiColumns, rows, topK],
   );
-
-  useEffect(() => {
-    if (!isOpen || !cellA || !cellB) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismiss(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, cellA, cellB, onDismiss]);
 
   useEffect(() => {
     let ignore = false;
@@ -314,24 +305,15 @@ export function CompareDrawer({
   if (!compareMode || !cellA || !cellB) return null;
 
   return (
-    <div className="compare-dialog-host" hidden={!isOpen}>
-    <div className="compare-modal-backdrop" role="presentation" onClick={onDismiss}>
-      <section
-        className="compare-drawer compare-modal"
-        role="dialog"
-        aria-modal="true"
+      <aside
+        className="details-panel compare-drawer"
         aria-label="Compare selections"
-        onClick={(e) => e.stopPropagation()}
       >
-        {/* Heading */}
         <div className="compare-drawer-heading">
           <div>
             <h2>Compare selections</h2>
             <p>Predicted image responses for A and B.</p>
           </div>
-          <button className="compare-close-button" type="button" onClick={onDismiss}>
-            Close &thinsp; <kbd style={{ fontFamily: 'inherit', fontSize: '.72rem', opacity: .7 }}>Esc</kbd>
-          </button>
         </div>
 
         <div className="compare-drawer-body">
@@ -396,8 +378,6 @@ export function CompareDrawer({
         </div>
 
         {modalImage && <ImageModal image={modalImage} onClose={() => setModalImage(null)} />}
-      </section>
-    </div>
-    </div>
+      </aside>
   );
 }

@@ -60,7 +60,6 @@ export default function App() {
   const [selectedCell, setSelectedCell] = useState<SelectedHeatmapCell | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareCells, setCompareCells] = useState<SelectedHeatmapCell[]>([]);
-  const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [sessionState, setSessionState] = useState<SessionLoadState>(initialSessionState);
   const [focusedStimulusId, setFocusedStimulusId] = useState<string | null>(null);
   const initializedSessionVersion = useRef<string | null>(null);
@@ -147,17 +146,11 @@ export default function App() {
   function handleCompareModeChange(enabled: boolean) {
     setCompareMode(enabled);
     setCompareCells([]);
-    setCompareDialogOpen(false);
 
     if (enabled) {
       setSelectedCell(null);
     }
   }
-
-  // Only a new complete A/B pair opens the dialog; dismissing it preserves the pair.
-  useEffect(() => {
-    setCompareDialogOpen(compareMode && compareCells.length === 2);
-  }, [compareMode, compareCells[0]?.id, compareCells[1]?.id]);
 
   function handleHeatmapCellClick(cell: SelectedHeatmapCell) {
     if (!compareMode) {
@@ -187,7 +180,6 @@ export default function App() {
     setSelectedCell(null);
     setCompareMode(false);
     setCompareCells([]);
-    setCompareDialogOpen(false);
   }
 
   if (sessionState.status === 'error') {
@@ -268,7 +260,6 @@ export default function App() {
     setModelSearch('');
     setCompareMode(false);
     setCompareCells([]);
-    setCompareDialogOpen(false);
   }
 
   return (
@@ -300,7 +291,6 @@ export default function App() {
           selectedCell={selectedCell}
           compareMode={compareMode}
           compareCells={compareCells}
-          compareDialogOpen={compareDialogOpen}
           comparableCellIds={comparableCellIds}
           session={session}
           focusedStimulusId={focusedStimulusId}
@@ -313,7 +303,6 @@ export default function App() {
           onResetControls={handleResetControls}
           onSelectCell={handleHeatmapCellClick}
           onCompareModeChange={handleCompareModeChange}
-          onCompareDialogOpenChange={setCompareDialogOpen}
           onFocusStimulus={setFocusedStimulusId}
           onSelectSessionModel={handleSelectSessionModel}
         />

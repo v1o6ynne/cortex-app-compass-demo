@@ -45,7 +45,6 @@ function controlsProps(): ComponentProps<typeof ControlsBar> {
   return {
     rois: ['ffa', 'eba', 'ppa'], rankingSystem: 'roi', selectedRankingRoi: 'eba',
     modelSearch: 'clip', showScoreLabels: true, compareMode: false, compareSelectionCount: 1,
-    compareDialogOpen: false, onOpenComparison: vi.fn(),
     onRankingSystemChange: vi.fn(), onSelectedRankingRoiChange: vi.fn(), onModelSearchChange: vi.fn(),
     onShowScoreLabelsChange: vi.fn(), onCompareModeChange: vi.fn(), onResetControls: vi.fn(),
   };
@@ -83,7 +82,7 @@ const detailsProps: ComponentProps<typeof DetailsPanel> = {
 
 const compareProps: ComponentProps<typeof CompareDrawer> = {
   compareMode: true, compareCells: cells, clustering, heatmapCells: cells,
-  rows, modelRoiColumns: columns, topK: 1, isOpen: true, onDismiss: vi.fn(),
+  rows, modelRoiColumns: columns, topK: 1,
 };
 
 describe('presentation cleanup preserves controls and scientific evidence', () => {
@@ -128,23 +127,22 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     expect(inactive).toContain('Compare selections');
   });
 
-  it('reopens a saved pair without toggling comparison mode or clearing selections', () => {
+  it('shows comparison progress without a reopen overlay button', () => {
     const props = { ...controlsProps(), compareMode: true, compareSelectionCount: 2 };
-    const elements = nativeElements(ControlsBar(props));
-    const reopen = elements.find(element => element.type === 'button' && element.props.children === 'Open comparison')!;
-    expect(reopen).toBeDefined();
-    reopen.props.onClick!();
-    expect(props.onOpenComparison).toHaveBeenCalledOnce();
-    expect(props.onCompareModeChange).not.toHaveBeenCalled();
-    expect(renderToStaticMarkup(<ControlsBar {...props} compareDialogOpen />)).not.toContain('Open comparison');
-    expect(renderToStaticMarkup(<ControlsBar {...props} compareSelectionCount={1} />)).not.toContain('Open comparison');
+    const markup = renderToStaticMarkup(<ControlsBar {...props} />);
+    expect(markup).toContain('2 / 2 selected');
+    expect(markup).not.toContain('Open comparison');
+    expect(renderToStaticMarkup(<ControlsBar {...props} compareSelectionCount={1} />)).toContain('1 / 2 selected');
   });
 
-  it('keeps comparison tools mounted but hidden when the dialog is dismissed', () => {
-    const markup = renderToStaticMarkup(<CompareDrawer {...compareProps} isOpen={false} />);
-    expect(markup).toContain('class="compare-dialog-host" hidden=""');
+  it('renders comparison evidence in the right-hand panel instead of a dialog', () => {
+    const markup = renderToStaticMarkup(<CompareDrawer {...compareProps} />);
+    expect(markup).toContain('class="details-panel compare-drawer"');
     expect(markup).toContain('aria-label="Compare selections"');
     expect(markup).toContain('Pinned stimuli');
+    expect(markup).not.toContain('compare-modal-backdrop');
+    expect(markup).not.toContain('aria-modal');
+    expect(markup).not.toContain('Open comparison');
   });
 
   it('keeps overall ranking usable without presenting an irrelevant ROI selector', () => {
@@ -245,7 +243,7 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     expect(guide).toContain('Image similarity');
     expect(guide).toContain('Brain &amp; selectivity');
     expect(guide).toContain('Compare selections');
+    expect(guide).toContain('right panel');
     expect(guide).toContain('Enter');
-    expect(guide).toContain('Escape');
   });
 });

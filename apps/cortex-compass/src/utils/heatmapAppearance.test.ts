@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampHeatmapTooltip,
+  COMPARE_HEATMAP_LAYOUT,
   getHeatmapLayout,
   heatmapScoreColor,
   heatmapScoreTextColor,
@@ -38,6 +39,13 @@ describe('scoreboard-aligned heatmap appearance', () => {
       height: 720,
     });
     expect(getHeatmapLayout(1, 3)).toMatchObject({ innerWidth: 76, innerHeight: 24, width: 254, height: 70 });
+    expect(getHeatmapLayout(26, 3, COMPARE_HEATMAP_LAYOUT)).toEqual({
+      margin: { top: 40, right: 12, bottom: 8, left: 176 },
+      innerWidth: 118,
+      innerHeight: 934,
+      width: 306,
+      height: 982,
+    });
   });
 
   it('keeps tooltip bounds inside the viewport instead of inside the clipped panel', () => {

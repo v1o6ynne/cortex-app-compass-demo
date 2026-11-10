@@ -1037,12 +1037,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   color: var(--compare);
   font-weight: 600;
 }
-.reopen-comparison-button {
-  margin-left: auto; padding: 4px 8px; border: 1px solid var(--accent-border);
-  border-radius: var(--r-sm); background: var(--surface-raised); color: var(--accent-strong);
-  font-size: .7rem; font-weight: 600; cursor: pointer;
-}
-
 /* Reset button */
 .reset-controls-button {
   margin-left: auto;
@@ -1069,6 +1063,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   padding: 0 32px;
   margin-top: 12px;
 }
+.workspace-grid--compare {
+  grid-template-columns: minmax(460px, 0.42fr) minmax(0, 1fr);
+}
 
 .model-browser {
   position: sticky;
@@ -1081,6 +1078,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 .model-browser .help-box { grid-column: 1 / -1; margin: 0; }
 .model-browser .help-box summary { padding: 8px 12px; font-size: .72rem; }
+.model-browser--compare {
+  grid-template-rows: auto minmax(520px, 1fr) auto;
+}
+.model-browser--compare .heatmap-scroll {
+  min-height: 480px;
+}
 
 /* ─────────────────────────────────────────────
    SHARED PANEL BASE
@@ -1716,30 +1719,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 
 /* ─────────────────────────────────────────────
-   COMPARE MODAL
+   COMPARE PANEL
    ───────────────────────────────────────────── */
-.compare-modal-backdrop {
-  position: fixed; inset: 0; z-index: 35;
-  display: grid; place-items: center;
-  padding: 24px;
-  background: rgba(28,25,23,.5);
-  backdrop-filter: blur(6px);
-  animation: fade-in 140ms ease;
-}
-
-.compare-modal {
-  width: min(1160px, 100%);
-  max-height: calc(100vh - 48px);
-  overflow: auto;
-}
-
-.compare-drawer {
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
-  padding: 22px;
-  animation: scale-in 150ms ease-out;
+.details-panel.compare-drawer {
+  background: var(--surface);
+  box-shadow: none;
+  animation: none;
 }
 
 .compare-drawer-heading {
@@ -1750,20 +1735,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
 }
-.compare-drawer-heading h2 { color: var(--text); font-size: 1.35rem; }
+.compare-drawer-heading h2 { color: var(--text); font-size: 1.2rem; }
 .compare-drawer-heading p  { font-size: .8rem; margin-top: 4px; }
-
-.compare-close-button {
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 7px 13px;
-  background: var(--bg-subtle);
-  color: var(--text-3);
-  font-size: .78rem;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.compare-close-button:hover { border-color: var(--compare); color: var(--compare); background: var(--compare-light); }
 
 .compare-drawer-body { display: grid; gap: 16px; margin-top: 16px; }
 
@@ -1773,9 +1746,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   display: grid;
   grid-template-columns: repeat(2, minmax(0,1fr));
   gap: 14px;
-  max-height: 500px;
-  overflow-y: auto;
-  padding-right: 2px;
 }
 
 .compare-cell-card {
@@ -2634,11 +2604,13 @@ button.cluster-size-chip:hover {
    RESPONSIVE
    ───────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .workspace-grid { grid-template-columns: 1fr; }
+  .workspace-grid,
+  .workspace-grid--compare { grid-template-columns: 1fr; }
   .model-browser { position: static; max-height: none; grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr); grid-template-rows: auto; align-items: stretch; }
   .heatmap-area,
   .details-panel  { position: static; max-height: none; }
   .heatmap-scroll { max-height: 350px; }
+  .model-browser--compare .heatmap-scroll { max-height: min(70vh, 720px); min-height: 360px; }
   .controls-bar   { position: static; }
 }
 
@@ -2700,8 +2672,7 @@ button.cluster-size-chip:hover {
   .summary-card-grid,
   .compare-metrics,
   .evidence-image-grid { grid-template-columns: 1fr; }
-  .image-modal-backdrop,
-  .compare-modal-backdrop { padding: 10px; }
+  .image-modal-backdrop { padding: 10px; }
   .heatmap-area, .details-panel { border-radius: var(--r-lg); }
   .status-panel { width: calc(100% - 28px); padding: 24px; }
   .summary-card-grid.session-rank-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }

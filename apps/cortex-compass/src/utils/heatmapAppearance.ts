@@ -33,8 +33,21 @@ export const HEATMAP_LAYOUT = {
   cellGap: 2,
 } as const;
 
-export function getHeatmapLayout(modelCount: number, roiCount: number) {
-  const { margin, columnPitch, rowPitch, cellGap } = HEATMAP_LAYOUT;
+export const COMPARE_HEATMAP_LAYOUT = {
+  margin: { top: 40, right: 12, bottom: 8, left: 176 },
+  columnPitch: 40,
+  rowPitch: 36,
+  cellGap: 2,
+} as const;
+
+export type HeatmapLayout = typeof HEATMAP_LAYOUT | typeof COMPARE_HEATMAP_LAYOUT;
+
+export function getHeatmapLayout(
+  modelCount: number,
+  roiCount: number,
+  layout: HeatmapLayout = HEATMAP_LAYOUT,
+) {
+  const { margin, columnPitch, rowPitch, cellGap } = layout;
   const innerWidth = Math.max(0, roiCount * columnPitch - cellGap);
   const innerHeight = Math.max(0, modelCount * rowPitch - cellGap);
   return {

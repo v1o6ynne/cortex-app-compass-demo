@@ -31,7 +31,6 @@ type VisualizationViewProps = {
   selectedCell: SelectedHeatmapCell | null;
   compareMode: boolean;
   compareCells: SelectedHeatmapCell[];
-  compareDialogOpen: boolean;
   comparableCellIds: Set<string>;
   session: CortexComparisonSession | null;
   focusedStimulusId: string | null;
@@ -44,7 +43,6 @@ type VisualizationViewProps = {
   onResetControls: () => void;
   onSelectCell: (cell: SelectedHeatmapCell) => void;
   onCompareModeChange: (enabled: boolean) => void;
-  onCompareDialogOpenChange: (open: boolean) => void;
   onFocusStimulus: (stimulusId: string) => void;
   onSelectSessionModel: (model: string) => void;
 };
@@ -64,7 +62,6 @@ export function VisualizationView({
   selectedCell,
   compareMode,
   compareCells,
-  compareDialogOpen,
   comparableCellIds,
   session,
   focusedStimulusId,
@@ -77,7 +74,6 @@ export function VisualizationView({
   onResetControls,
   onSelectCell,
   onCompareModeChange,
-  onCompareDialogOpenChange,
   onFocusStimulus,
   onSelectSessionModel,
 }: VisualizationViewProps) {
@@ -92,8 +88,8 @@ export function VisualizationView({
           onSelectModel={onSelectSessionModel}
         />
       )}
-      <div className="workspace-grid">
-        <aside className="model-browser" aria-label="Model browser">
+      <div className={`workspace-grid${compareMode ? ' workspace-grid--compare' : ''}`}>
+        <aside className={`model-browser${compareMode ? ' model-browser--compare' : ''}`} aria-label="Model browser">
           <ControlsBar
             rois={heatmapRois}
             rankingSystem={rankingSystem}
@@ -102,8 +98,6 @@ export function VisualizationView({
             showScoreLabels={showScoreLabels}
             compareMode={compareMode}
             compareSelectionCount={compareCells.length}
-            compareDialogOpen={compareDialogOpen}
-            onOpenComparison={() => onCompareDialogOpenChange(true)}
             onRankingSystemChange={onRankingSystemChange}
             onSelectedRankingRoiChange={onSelectedRankingRoiChange}
             onModelSearchChange={onModelSearchChange}
@@ -128,30 +122,40 @@ export function VisualizationView({
           />
           <HelpBox />
         </aside>
-        <DetailsPanel
-          heatmapCells={heatmapCells}
-          imageCount={rows.length}
-          clustering={clustering}
-          modelRoiColumns={modelRoiColumns}
-          onSelectCell={onSelectCell}
-          rows={rows}
-          selectedCell={selectedCell}
-          session={session}
-          focusedStimulusId={focusedStimulusId}
-          onFocusStimulus={onFocusStimulus}
-        />
+        {compareMode ? (
+          compareCells.length === 2 ? (
+            <CompareDrawer
+              heatmapCells={heatmapCells}
+              compareMode={compareMode}
+              compareCells={compareCells}
+              clustering={clustering}
+              rows={rows}
+              modelRoiColumns={modelRoiColumns}
+              topK={6}
+            />
+          ) : (
+            <aside className="details-panel" aria-label="Compare selections">
+              <h2>Compare selections</h2>
+              <div className="empty-state-card">
+                <p>Select two heatmap cells. {compareCells.length} / 2 selected.</p>
+              </div>
+            </aside>
+          )
+        ) : (
+          <DetailsPanel
+            heatmapCells={heatmapCells}
+            imageCount={rows.length}
+            clustering={clustering}
+            modelRoiColumns={modelRoiColumns}
+            onSelectCell={onSelectCell}
+            rows={rows}
+            selectedCell={selectedCell}
+            session={session}
+            focusedStimulusId={focusedStimulusId}
+            onFocusStimulus={onFocusStimulus}
+          />
+        )}
       </div>
-      <CompareDrawer
-        heatmapCells={heatmapCells}
-        compareMode={compareMode}
-        compareCells={compareCells}
-        isOpen={compareDialogOpen}
-        clustering={clustering}
-        rows={rows}
-        modelRoiColumns={modelRoiColumns}
-        topK={6}
-        onDismiss={() => onCompareDialogOpenChange(false)}
-      />
     </>
   );
 }

@@ -23,8 +23,8 @@ export function HelpBox() {
           across the reference images.
         </p>
         <p>
-          <strong>Compare selections:</strong> compare two cells’ image rankings and clusters.
-          Enter selects; Escape closes.
+          <strong>Compare selections:</strong> pick two heatmap cells. Their comparison
+          appears in the right panel. Enter toggles a selection.
         </p>
       </div>
     </details>

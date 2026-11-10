@@ -110,6 +110,9 @@ describe('compact heatmap presentation', () => {
     expect(markup).toContain('No image-level data for comparison.');
     expect(markup).toContain('Press Enter to toggle compare selection.');
     expect(markup).toContain('Not comparable');
+    const compareCell = markup.match(/<rect class="heatmap-cell compare-selected"[^>]+/)?.[0];
+    expect(compareCell).toContain('width="38"');
+    expect(compareCell).toContain('height="34"');
     expect(markup).toContain('score N/A');
   });
 

@@ -108,7 +108,6 @@ export function CompareResponseScatter({ points, cellA, cellB, pinnedImages, onT
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onTogglePin(point.imageName); }
                   if (event.key === 'Escape') {
-                    // Let Escape reach the comparison dialog from focused points too.
                     setHoverPreview(null); setFocusPreview(null);
                   }
                   if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); moveFocus(index, 1); }
