@@ -296,12 +296,13 @@ with the same training, evaluation, and metric selected—not its multi-dataset 
 which offers cortical and non-anatomical similarity views.
 
 **Compare selections** includes univariate and multivariate views over shared
-Murty-185 references. **Univariate** plots response ranks (ROI means) with
-mean Pearson r and rank Spearman ρ, plus a top-|Δrank| list with dumbbells.
-**Multivariate** loads Subject 1 voxel predictions, builds Euclidean RDMs
-(÷ voxel count, matching Core), and reports RDM Spearman ρ plus the largest
-pairwise disagreements. Both views stay in the right panel while two cells
-are selected; turning Compare mode off clears the pair.
+Murty-185 references. **Univariate** shows two rank–rank scatters: measured
+Murty human ROI means (p1–p4 average from `murty185_human_roi_means.csv`)
+versus each selected model, with mean Pearson r, rank Spearman ρ, and top
+|Δrank| lists. **Multivariate** loads Subject 1 voxel predictions, builds
+Euclidean RDMs (÷ voxel count, matching Core), and reports RDM Spearman ρ
+plus the largest pairwise disagreements. Both views stay in the right panel
+while two cells are selected; turning Compare mode off clears the pair.
 
 The brain image picker is searchable and bounded regardless of upload count, with previous/next navigation
 and a selected-image preview. Display controls collapse on narrow screens so the cortex stays visible.
