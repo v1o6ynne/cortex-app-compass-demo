@@ -2032,6 +2032,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   background: var(--surface-raised); color: var(--text-2); font-size: .72rem;
 }
 .compare-metric-badges strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.compare-human-model-grid { display: grid; gap: 22px; }
+.compare-human-model-panel { display: grid; gap: 8px; min-width: 0; }
+.compare-human-model-heading { margin: 0; font-size: .84rem; }
+.compare-human-model-metrics { margin-bottom: 2px; }
 .compare-response-section { display: grid; gap: 6px; }
 .compare-response-intro { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .compare-response-intro h3 { font-size: .87rem; }

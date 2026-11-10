@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "artifact": "murty185-human-roi-means",
+  "stimulusSet": "Murty-185",
+  "responseKind": "measured_fmri_roi_mean",
+  "subjects": [
+    "p1",
+    "p2",
+    "p3",
+    "p4"
+  ],
+  "subjectPolicy": "neurotypical_p1_p4_average_matching_cortex_core_default",
+  "roiAggregation": "concatenate_hemisphere_voxels_then_mean_per_image_then_mean_across_subjects",
+  "rois": [
+    "ffa",
+    "ppa",
+    "eba"
+  ],
+  "imageCount": 185,
+  "sourcePickle": "/research/ruolin/playground/cross_dataset_mean_roi_correlation/data/murty185/data_murty185/data_murty185/all_data.pickle",
+  "sourcePickleSha256": "66e9029c4115a982736cb48a3bb10788b42b2880e5b80a37eec2031b6790a3a3",
+  "csv": "murty185_human_roi_means.csv",
+  "csvSha256": "85cf5863b9133e2f4b179aab7ebf4bfee41d7d0cbe19cc77899400b0f3a8cb98"
+}

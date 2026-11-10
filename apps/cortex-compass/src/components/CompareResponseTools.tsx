@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { EvidenceImage, EvidenceView, SelectedHeatmapCell } from '../types/data';
-import { buildSharedResponseComparison } from '../utils/responseComparison';
+import { humanEvidenceImages, loadHumanRoiMeans, type HumanRoiMeansTable } from '../services/humanRoiMeans';
+import { buildSharedResponseComparison, type SharedResponseComparison } from '../utils/responseComparison';
 import { CompareMultivariateRdm } from './CompareMultivariateRdm';
-import { CompareResponseScatter } from './CompareResponseScatter';
+import { CompareResponseScatter, comparisonModelLabel } from './CompareResponseScatter';
 
 type Props = {
   cellA: SelectedHeatmapCell;
@@ -14,17 +15,77 @@ type Props = {
 
 type AnalysisView = 'univariate' | 'multivariate';
 
+type HumanLoadState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; table: HumanRoiMeansTable };
+
 function fmt(value: number | null): string {
   return value === null ? '—' : value.toFixed(3);
+}
+
+function humanModelComparison(
+  table: HumanRoiMeansTable | null,
+  cell: SelectedHeatmapCell,
+  evidence: EvidenceView | null,
+): { comparison: SharedResponseComparison; reason: string | null } {
+  if (!table) {
+    return {
+      comparison: buildSharedResponseComparison([], []),
+      reason: 'Loading Murty human ROI means…',
+    };
+  }
+  const human = humanEvidenceImages(table, cell.roi);
+  if (!human) {
+    return {
+      comparison: buildSharedResponseComparison([], []),
+      reason: 'Human–model rank comparison needs an FFA, PPA, or EBA cell.',
+    };
+  }
+  if (!evidence) {
+    return {
+      comparison: buildSharedResponseComparison([], []),
+      reason: 'Model ROI-mean predictions are unavailable for this cell.',
+    };
+  }
+  const comparison = buildSharedResponseComparison(human, evidence.images);
+  return { comparison, reason: comparison.unavailableReason };
 }
 
 export function CompareResponseTools({ cellA, cellB, evidenceA, evidenceB, onOpenImage }: Props) {
   const [activeView, setActiveView] = useState<AnalysisView>('univariate');
   const [multivariateVisited, setMultivariateVisited] = useState(false);
-  const comparison = useMemo(
-    () => buildSharedResponseComparison(evidenceA?.images ?? [], evidenceB?.images ?? []),
-    [evidenceA, evidenceB],
+  const [humanState, setHumanState] = useState<HumanLoadState>({ status: 'loading' });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setHumanState({ status: 'loading' });
+    loadHumanRoiMeans()
+      .then((table) => {
+        if (!controller.signal.aborted) setHumanState({ status: 'ready', table });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setHumanState({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Murty human ROI means could not be loaded.',
+        });
+      });
+    return () => controller.abort();
+  }, []);
+
+  const humanTable = humanState.status === 'ready' ? humanState.table : null;
+  const pairA = useMemo(
+    () => humanModelComparison(humanTable, cellA, evidenceA),
+    [cellA, evidenceA, humanTable],
   );
+  const pairB = useMemo(
+    () => humanModelComparison(humanTable, cellB, evidenceB),
+    [cellB, evidenceB, humanTable],
+  );
+
+  const aLabel = comparisonModelLabel(cellA.model);
+  const bLabel = comparisonModelLabel(cellB.model);
 
   return (
     <section className="compare-response-tools" aria-label="Linked image comparison">
@@ -60,34 +121,46 @@ export function CompareResponseTools({ cellA, cellB, evidenceA, evidenceB, onOpe
         aria-labelledby={activeView === 'univariate' ? 'compare-univariate-tab' : 'compare-multivariate-tab'}
       >
         <div hidden={activeView !== 'univariate'}>
-          {comparison.unavailableReason ? (
-            <p className="compare-empty">{comparison.unavailableReason}</p>
-          ) : (
-            <>
-              <div className="compare-analysis-header">
-                <div>
-                  <h3 className="compare-analysis-title">Univariate · ROI mean responses</h3>
-                  <p className="compare-analysis-note">
-                    Rank–rank scatter compares how the two models order the same images by ROI-mean
-                    prediction (voxels collapsed). The list highlights the largest absolute rank shifts.
-                  </p>
-                </div>
-                <div className="compare-metric-badges" aria-label="Univariate summary metrics">
-                  <span title="Pearson correlation of ROI-mean responses across shared images">
-                    Mean Pearson r: <strong>{fmt(comparison.meanPearson)}</strong>
-                  </span>
-                  <span title="Spearman correlation of the models' response ranks">
-                    Rank Spearman ρ: <strong>{fmt(comparison.rankSpearman)}</strong>
-                  </span>
-                </div>
-              </div>
-              <CompareResponseScatter
-                points={comparison.points}
-                cellA={cellA}
-                cellB={cellB}
+          <div className="compare-analysis-header">
+            <div>
+              <h3 className="compare-analysis-title">Univariate · Murty human vs each model</h3>
+              <p className="compare-analysis-note">
+                Two rank–rank scatters compare measured Murty-185 ROI means (p1–p4 average) against each
+                selected model&apos;s predicted ROI means. This asks which model orders images more like humans.
+              </p>
+            </div>
+            <div className="compare-metric-badges" aria-label="Human–model summary metrics">
+              <span title={`Spearman ρ between Murty human ranks and ${aLabel}`}>
+                {aLabel} ρ: <strong>{fmt(pairA.comparison.rankSpearman)}</strong>
+              </span>
+              <span title={`Spearman ρ between Murty human ranks and ${bLabel}`}>
+                {bLabel} ρ: <strong>{fmt(pairB.comparison.rankSpearman)}</strong>
+              </span>
+            </div>
+          </div>
+
+          {humanState.status === 'loading' && (
+            <p className="compare-empty" role="status">Loading Murty human ROI means…</p>
+          )}
+          {humanState.status === 'error' && (
+            <p className="compare-empty" role="status">{humanState.message}</p>
+          )}
+
+          {humanState.status === 'ready' && (
+            <div className="compare-human-model-grid">
+              <HumanModelPanel
+                cell={cellA}
+                label={aLabel}
+                pair={pairA}
                 onOpenImage={onOpenImage}
               />
-            </>
+              <HumanModelPanel
+                cell={cellB}
+                label={bLabel}
+                pair={pairB}
+                onOpenImage={onOpenImage}
+              />
+            </div>
           )}
         </div>
 
@@ -98,5 +171,47 @@ export function CompareResponseTools({ cellA, cellB, evidenceA, evidenceB, onOpe
         )}
       </div>
     </section>
+  );
+}
+
+function HumanModelPanel({
+  cell,
+  label,
+  pair,
+  onOpenImage,
+}: {
+  cell: SelectedHeatmapCell;
+  label: string;
+  pair: { comparison: SharedResponseComparison; reason: string | null };
+  onOpenImage: (image: EvidenceImage) => void;
+}) {
+  if (pair.reason) {
+    return (
+      <div className="compare-human-model-panel">
+        <h4 className="compare-human-model-heading">Murty human vs {label}</h4>
+        <p className="compare-empty">{pair.reason}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="compare-human-model-panel">
+      <div className="compare-metric-badges compare-human-model-metrics" aria-label={`${label} versus human metrics`}>
+        <span title="Pearson correlation of ROI-mean responses">
+          Mean r: <strong>{fmt(pair.comparison.meanPearson)}</strong>
+        </span>
+        <span title="Spearman correlation of response ranks">
+          Rank ρ: <strong>{fmt(pair.comparison.rankSpearman)}</strong>
+        </span>
+      </div>
+      <CompareResponseScatter
+        points={pair.comparison.points}
+        xLabel="Murty human"
+        yLabel={label}
+        roiLabel={String(cell.roi).toUpperCase()}
+        onOpenImage={onOpenImage}
+        compact
+      />
+    </div>
   );
 }

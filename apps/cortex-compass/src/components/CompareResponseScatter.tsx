@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { EvidenceImage, SelectedHeatmapCell } from '../types/data';
+import type { EvidenceImage } from '../types/data';
 import {
   rankAxisDomain,
   topRankDisagreements,
@@ -13,9 +13,11 @@ export function comparisonModelLabel(model: string): string {
 
 type Props = {
   points: SharedResponsePoint[];
-  cellA: SelectedHeatmapCell;
-  cellB: SelectedHeatmapCell;
+  xLabel: string;
+  yLabel: string;
+  roiLabel: string;
   onOpenImage: (image: EvidenceImage) => void;
+  compact?: boolean;
 };
 
 const BLUE = '#2468A0';
@@ -40,7 +42,7 @@ function rankTicks(low: number, high: number): number[] {
   return ticks;
 }
 
-export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Props) {
+export function CompareResponseScatter({ points, xLabel, yLabel, roiLabel, onOpenImage, compact = false }: Props) {
   type Preview = { point: SharedResponsePoint; x: number; y: number };
   const [hoverPreview, setHoverPreview] = useState<Preview | null>(null);
   const [focusPreview, setFocusPreview] = useState<Preview | null>(null);
@@ -51,22 +53,22 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
   const [low, high] = rankAxisDomain(points);
   const scaleX = (value: number) => LEFT + (value - low) / (high - low) * SIDE;
   const scaleY = (value: number) => TOP + SIDE - (value - low) / (high - low) * SIDE;
-  const aLabel = comparisonModelLabel(cellA.model);
-  const bLabel = comparisonModelLabel(cellB.model);
   const ticks = rankTicks(low, high);
-  const disagreements = useMemo(() => topRankDisagreements(points, 8), [points]);
+  const listLimit = compact ? 5 : 8;
+  const disagreements = useMemo(() => topRankDisagreements(points, listLimit), [listLimit, points]);
   const highlighted = useMemo(
     () => new Set(disagreements.map((point) => point.imageName)),
     [disagreements],
   );
+  const maxRank = Math.max(1, ...points.flatMap((point) => [point.rankA, point.rankB]));
 
   function openPoint(point: SharedResponsePoint) {
     onOpenImage({
       imageName: point.imageName,
       imageUrl: point.imageUrl,
-      value: point.meanA,
-      rank: point.rankA,
-      valueLabel: `${aLabel} #${point.rankA} · ${bLabel} #${point.rankB} · Δrank ${point.rankDelta >= 0 ? '+' : ''}${point.rankDelta}`,
+      value: point.meanB,
+      rank: point.rankB,
+      valueLabel: `${xLabel} #${point.rankA} · ${yLabel} #${point.rankB} · Δrank ${point.rankDelta >= 0 ? '+' : ''}${point.rankDelta}`,
     });
   }
 
@@ -84,7 +86,8 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
   function showPreview(point: SharedResponsePoint, element: SVGElement, trigger: 'hover' | 'focus') {
     const rect = element.getBoundingClientRect();
     const width = 270;
-    const next = { point,
+    const next = {
+      point,
       x: Math.max(8, Math.min(window.innerWidth - width - 8, rect.right + 14)),
       y: Math.max(8, Math.min(window.innerHeight - 270 - 8, rect.top - 90)),
     };
@@ -104,14 +107,14 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
   ];
 
   return (
-    <section className="compare-response-section" aria-label="Response rank scatterplot">
+    <section className="compare-response-section" aria-label={`${xLabel} versus ${yLabel} response ranks`}>
       <div className="compare-response-intro">
-        <h3>Response rank comparison</h3>
-        <span>{points.length} shared images · near the diagonal = similar ranking</span>
+        <h3>{xLabel} vs {yLabel}</h3>
+        <span>{points.length} images · {roiLabel} · near diagonal = similar ranking</span>
       </div>
       <div className="compare-response-layout">
         <figure className="compare-response-figure" ref={figureRef}>
-          <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`${aLabel} versus ${bLabel} response ranks`}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`${xLabel} versus ${yLabel} response ranks`}>
             <rect x={LEFT} y={TOP} width={SIDE} height={SIDE} className="compare-response-frame" />
             {ticks.map((tick) => (
               <g key={tick} className="compare-response-axis">
@@ -125,8 +128,8 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
               className="compare-response-identity"
               x1={scaleX(Math.max(low, 1))}
               y1={scaleY(Math.max(low, 1))}
-              x2={scaleX(Math.min(high, Math.max(...points.flatMap((point) => [point.rankA, point.rankB]))))}
-              y2={scaleY(Math.min(high, Math.max(...points.flatMap((point) => [point.rankA, point.rankB]))))}
+              x2={scaleX(Math.min(high, maxRank))}
+              y2={scaleY(Math.min(high, maxRank))}
             />
             <text className="compare-response-identity-label" x={LEFT + SIDE - 12} y={TOP + 18} textAnchor="end">equal rank</text>
             {orderedPoints.map((point, index) => {
@@ -142,7 +145,7 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
                   data-rank-a={point.rankA}
                   data-rank-b={point.rankB}
                   data-rank-delta={point.rankDelta}
-                  aria-label={`${point.imageId}; ${aLabel} rank ${point.rankA}; ${bLabel} rank ${point.rankB}; Δrank ${point.rankDelta}`}
+                  aria-label={`${point.imageId}; ${xLabel} rank ${point.rankA}; ${yLabel} rank ${point.rankB}; Δrank ${point.rankDelta}`}
                   aria-describedby={preview?.point.imageName === point.imageName ? tooltipId : undefined}
                   onMouseEnter={(event) => showPreview(point, event.currentTarget, 'hover')}
                   onMouseLeave={() => setHoverPreview(null)}
@@ -171,26 +174,24 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
               );
             })}
             <text className="compare-response-axis-title" x={LEFT + SIDE / 2} y={H - 20} textAnchor="middle">
-              {aLabel} · {cellA.roi.toUpperCase()} rank
+              {xLabel} rank
             </text>
             <text className="compare-response-axis-title" transform={`translate(19,${TOP + SIDE / 2}) rotate(-90)`} textAnchor="middle">
-              {bLabel} · {cellB.roi.toUpperCase()} rank
+              {yLabel} rank
             </text>
           </svg>
-          <figcaption>Rank 1 = highest predicted ROI mean. Dashed line: identical ranks. Color marks the largest |Δrank| images.</figcaption>
+          <figcaption>Rank 1 = highest ROI mean. x = measured Murty human; y = model prediction. Color marks largest |Δrank|.</figcaption>
         </figure>
 
-        <div className="compare-gap-examples" aria-label="Largest rank disagreements">
+        <div className="compare-gap-examples" aria-label={`Largest rank disagreements versus ${yLabel}`}>
           <section className="compare-rank-disagreement-list">
-            <h4>Largest |Δrank|</h4>
+            <h4>Largest |Δrank| vs human</h4>
             <div className="compare-rank-disagreement-grid">
               {disagreements.map((point) => {
                 const aPos = Math.min(point.rankA, point.rankB);
                 const bPos = Math.max(point.rankA, point.rankB);
-                const maxRank = Math.max(...points.flatMap((entry) => [entry.rankA, entry.rankB]), 1);
                 const leftPct = ((aPos - 1) / Math.max(maxRank - 1, 1)) * 100;
                 const widthPct = ((bPos - aPos) / Math.max(maxRank - 1, 1)) * 100;
-                const aIsLeft = point.rankA <= point.rankB;
                 return (
                   <button
                     type="button"
@@ -202,10 +203,10 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
                     <img src={point.imageUrl} alt="" />
                     <div className="compare-rank-disagreement-body">
                       <strong>{point.imageId}</strong>
-                      <span>{aLabel} #{point.rankA} → {bLabel} #{point.rankB}</span>
+                      <span>{xLabel} #{point.rankA} → {yLabel} #{point.rankB}</span>
                       <span className="compare-rank-delta">
                         Δrank {point.rankDelta >= 0 ? '+' : ''}{point.rankDelta}
-                        {point.rankLead === 'a' ? ` · higher in ${aLabel}` : point.rankLead === 'b' ? ` · higher in ${bLabel}` : ''}
+                        {point.rankLead === 'a' ? ` · higher in ${xLabel}` : point.rankLead === 'b' ? ` · higher in ${yLabel}` : ''}
                       </span>
                       <div className="compare-rank-dumbbell" aria-hidden="true">
                         <span className="compare-rank-dumbbell-track" />
@@ -214,11 +215,11 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
                           style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1.5)}%` }}
                         />
                         <span
-                          className={`compare-rank-dumbbell-dot compare-rank-dumbbell-dot--a${aIsLeft ? ' is-left' : ' is-right'}`}
+                          className="compare-rank-dumbbell-dot compare-rank-dumbbell-dot--a"
                           style={{ left: `${((point.rankA - 1) / Math.max(maxRank - 1, 1)) * 100}%` }}
                         />
                         <span
-                          className={`compare-rank-dumbbell-dot compare-rank-dumbbell-dot--b${aIsLeft ? ' is-right' : ' is-left'}`}
+                          className="compare-rank-dumbbell-dot compare-rank-dumbbell-dot--b"
                           style={{ left: `${((point.rankB - 1) / Math.max(maxRank - 1, 1)) * 100}%` }}
                         />
                       </div>
@@ -230,7 +231,7 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
             {disagreements.length === 0 ? (
               <p>No rank disagreements on the shared references.</p>
             ) : (
-              <p>Top 8 absolute rank shifts. Red = ranked higher by {aLabel}; blue = ranked higher by {bLabel}.</p>
+              <p>Red = ranked higher by {xLabel}; blue = ranked higher by {yLabel}.</p>
             )}
           </section>
         </div>
@@ -240,10 +241,10 @@ export function CompareResponseScatter({ points, cellA, cellB, onOpenImage }: Pr
           <img src={preview.point.imageUrl} alt="" />
           <strong>{preview.point.imageId}</strong>
           <table>
-            <thead><tr><th>Model</th><th>Rank</th><th>Mean</th></tr></thead>
+            <thead><tr><th>Source</th><th>Rank</th><th>Mean</th></tr></thead>
             <tbody>
-              <tr><th>{aLabel}</th><td>#{preview.point.rankA}</td><td>{preview.point.meanA.toFixed(3)}</td></tr>
-              <tr><th>{bLabel}</th><td>#{preview.point.rankB}</td><td>{preview.point.meanB.toFixed(3)}</td></tr>
+              <tr><th>{xLabel}</th><td>#{preview.point.rankA}</td><td>{preview.point.meanA.toFixed(3)}</td></tr>
+              <tr><th>{yLabel}</th><td>#{preview.point.rankB}</td><td>{preview.point.meanB.toFixed(3)}</td></tr>
             </tbody>
           </table>
           <span>Δrank {preview.point.rankDelta >= 0 ? '+' : ''}{preview.point.rankDelta}. Click to open.</span>

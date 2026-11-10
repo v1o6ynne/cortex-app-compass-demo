@@ -141,9 +141,8 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     expect(markup).toContain('aria-label="Compare selections"');
     expect(markup).toContain('Univariate');
     expect(markup).toContain('Multivariate');
-    expect(markup).toContain('Univariate · ROI mean responses');
-    expect(markup).toContain('Response rank comparison');
-    expect(markup).toContain('Largest |Δrank|');
+    expect(markup).toContain('Univariate · Murty human vs each model');
+    expect(markup).toContain('Loading Murty human ROI means');
     expect(markup).not.toContain('Pinned stimuli');
     expect(markup).not.toContain('Choose up to two images');
     expect(markup).not.toContain('compare-modal-backdrop');
