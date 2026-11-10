@@ -187,6 +187,9 @@ describe('Cortex-Compass application', () => {
     }, false, 'stimuli');
 
     expect(markup).toContain('<strong>Viewing:</strong> clip_rn50 · FFA · NSD-1000 predictions');
+    expect(markup).toContain('aria-label="Model browser"');
+    expect(markup).toContain('aria-label="Heatmap area"');
+    expect(markup).toContain('Search models');
     expect(markup).toContain('class="detail-subtabs"');
     expect(markup).toContain('Predicted responses');
     expect(markup).toContain('Image similarity');

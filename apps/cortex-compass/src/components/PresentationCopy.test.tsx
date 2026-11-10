@@ -159,7 +159,7 @@ describe('presentation cleanup preserves controls and scientific evidence', () =
     const markup = renderToStaticMarkup(<DetailsPanel {...detailsProps} />);
 
     expect(markup).toContain('Choose a model &amp; region');
-    expect(markup).toContain('Choose a model and region above.');
+    expect(markup).toContain('Select a heatmap cell on the left.');
     expect(markup).not.toMatch(/Selection:?\s*None|Loaded images/i);
     expect(markup).not.toContain('class="eyebrow"');
     expect(markup).not.toContain('to explore image responses and clusters');

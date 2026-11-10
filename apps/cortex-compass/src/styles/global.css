@@ -975,13 +975,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   font-weight: 650;
 }
 
-.workspace-grid--stimuli {
-  grid-template-columns: minmax(0, 1fr);
-}
-.workspace-grid--stimuli .help-box { margin: 0; }
-.stimulus-picker {
-  grid-template-columns: minmax(0, 1.4fr) minmax(120px, .6fr);
-}
 
 @keyframes slide-in {
   from { opacity: 0; transform: translateY(5px); }

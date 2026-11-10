@@ -302,7 +302,6 @@ export default function App() {
           heatmapRois={heatmapRois}
           heatmapCells={heatmapCells}
           allHeatmapCells={allHeatmapCells}
-          allModels={orderedModels}
           visibleModels={visibleModels}
           rankingSystem={rankingSystem}
           selectedRankingRoi={rankingRoi}
