@@ -93,9 +93,10 @@ Analytics setup:
 - The measurement ID is read from `VITE_GA_MEASUREMENT_ID`
 - Do not commit real GA keys; keep them in `.env.local`
 
-The fROI backend and Cortex-Compass handoff URLs are configured through `.env.local`.
-Do not put temporary tunnel URLs or secrets in source control. After a successful
-fROI prediction, the fifth results section, below **3D brain response**, offers
+The fROI backend and Cortex-Compass handoff URLs are configured through `.env.local`
+for local development. For a public Vercel deploy, see **Public live demo** below.
+After a successful fROI prediction, the fifth results section, below **3D brain
+response**, offers
 **Open Cortex-Compass**. It opens `/cortex-compass/?preparing=1` in a new browser
 tab immediately, showing Virtual Cortex's navigation and the normal comparison
 loading view. Once the temporary NSD-1000 comparison is ready, that same tab
@@ -169,6 +170,98 @@ The fROI inference backend uses `VITE_CORTEX_CORE_URL` first, then the optional
 public endpoint settings, not secrets. The inference API contract is unchanged.
 The whole-brain service is configured separately with `VITE_CORTEX_WHOLE_BRAIN_URL`
 and defaults to `http://localhost:5557`.
+
+## Public live demo
+
+A public site is two pieces: this frontend on Vercel, and Cortex Core on the
+lab GPU machine. `npm run build` already packs Lab and Cortex-Compass into one
+`dist/` (`dist/infoviz/` for the visualization). Do not run `npm run dev` or
+`npm run dev:compass` as the public servers.
+
+### Vercel (frontend)
+
+Import the GitHub repo as a **standalone Vite** app at `/`. Do not import
+`cortex-web-app` (Next.js) or `chat-api` (FastAPI).
+
+- Production branch: **IUI** (not `vss`)
+- Build command: `npm run build`
+- Output directory: `dist`
+
+`apps/cortex-compass` is ordinary tracked source on IUI, so Vercel does not
+need Git submodules or a second-repo deploy key.
+
+### Cortex Core in tmux (backend)
+
+On the lab machine, keep Core and the tunnel in one tmux session. Create it
+with `tmux new -s cortex`. Window 1:
+
+```bash
+conda activate compass
+cd /research/cortex-compass/cortex-core
+
+export CORTEX_PORT=5557
+export CORTEX_HOST=0.0.0.0
+export CORTEX_REFERENCE_ARTIFACT_DIR="/research/cortex-compass/reference-bundle/reference"
+export CORTEX_ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174,https://cortex-app-compass-demo.vercel.app"
+export CORTEX_CHECKPOINT_DIR="/research/cortex-paper/cortex_best_checkpoints"
+export CORTEX_BACKBONE_DIR="/research/cortex-paper/backbones"
+export GRADIO_TEMP_DIR="./app_cache"
+export CUDA_VISIBLE_DEVICES=1
+
+python app.py
+```
+
+`CORTEX_REFERENCE_ARTIFACT_DIR` must be the directory that contains
+`manifest.json` (not the zip and not the parent `reference-bundle/` folder).
+That private bundle is not in git; copy it onto the machine separately.
+
+`CORTEX_ALLOWED_ORIGINS` is an exact origin list (https, no trailing slash).
+After the Vercel URL is known, add it here and restart `python app.py`.
+Changing CORS does not require restarting Cloudflare.
+
+Detach with `Ctrl-b` then `d`. Reattach with `tmux attach -t cortex`.
+
+### Cloudflare tunnel
+
+In a second tmux window (`Ctrl-b` then `c`):
+
+```bash
+cloudflared tunnel --url http://localhost:5557
+```
+
+Copy the printed `https://….trycloudflare.com` URL (no trailing slash). Quick
+tunnels mint a new hostname on every restart, so leave this window running.
+Restarting `python app.py` on port 5557 does **not** require restarting the
+tunnel.
+
+### Point the frontend at the tunnel
+
+This repo's production fallbacks currently commit that URL (instead of Vercel
+project env vars). Update both defaults whenever the tunnel hostname changes:
+
+1. `assets/js/services/config.js` — the `SERVER_URL` fallback (Lab inference)
+2. `apps/cortex-compass/src/services/cortexSession.ts` — `DEFAULT_CORTEX_CORE_URL` (Compass comparison)
+
+Then push `IUI`:
+
+```bash
+git add assets/js/services/config.js apps/cortex-compass/src/services/cortexSession.ts
+git commit -m "Point Core URL at the current Cloudflare tunnel"
+git push origin IUI
+```
+
+Keep local `npm run dev` on `/cortex-core` by creating an untracked `.env.local`:
+
+```bash
+VITE_CORTEX_CORE_URL=/cortex-core
+CORTEX_CORE_PROXY_TARGET=http://127.0.0.1:5557
+```
+
+Optional alternative: leave the code fallbacks as `/cortex-core` and set
+`VITE_CORTEX_CORE_URL` in the Vercel project **Settings → Environment
+Variables**, then Redeploy. `VITE_*` is inlined at build time.
+
+Public Lab: `https://cortex-app-compass-demo.vercel.app/lab/`.
 
 ## Model pages
 
