@@ -2,7 +2,6 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceImage } from '../types/data';
 import {
-  rankAxisDomain,
   topRankDisagreements,
   type SharedResponsePoint,
 } from '../utils/responseComparison';
@@ -22,23 +21,19 @@ type Props = {
 
 const BLUE = '#2468A0';
 const RED = '#C33C3C';
-const W = 510;
-const H = 500;
-const LEFT = 72;
-const TOP = 24;
-const SIDE = 400;
+const W = 420;
+const H = 560;
+const TOP = 36;
+const BOTTOM = 28;
+const LEFT_X = 88;
+const RIGHT_X = 332;
 
-function rankTicks(low: number, high: number): number[] {
-  const start = Math.max(1, Math.ceil(low));
-  const end = Math.floor(high);
-  if (end <= start) return [start];
-  const span = end - start;
-  const step = span <= 10 ? 1 : span <= 40 ? 5 : span <= 100 ? 20 : 40;
+function rankTicks(maxRank: number): number[] {
+  if (maxRank <= 1) return [1];
+  const step = maxRank <= 40 ? 5 : maxRank <= 100 ? 20 : 40;
   const ticks = [1];
-  for (let tick = start - ((start - 1) % step) + (start === 1 ? step : 0); tick <= end; tick += step) {
-    if (tick > 1) ticks.push(tick);
-  }
-  if (ticks[ticks.length - 1] !== end) ticks.push(end);
+  for (let tick = step; tick < maxRank; tick += step) ticks.push(tick);
+  if (ticks[ticks.length - 1] !== maxRank) ticks.push(maxRank);
   return ticks;
 }
 
@@ -46,14 +41,11 @@ export function CompareResponseScatter({ points, xLabel, yLabel, roiLabel, onOpe
   type Preview = { point: SharedResponsePoint; x: number; y: number };
   const [hoverPreview, setHoverPreview] = useState<Preview | null>(null);
   const [focusPreview, setFocusPreview] = useState<Preview | null>(null);
+  const [hoveredName, setHoveredName] = useState<string | null>(null);
   const preview = hoverPreview ?? focusPreview;
   const previewVisible = preview !== null;
   const tooltipId = useId();
   const figureRef = useRef<HTMLElement>(null);
-  const [low, high] = rankAxisDomain(points);
-  const scaleX = (value: number) => LEFT + (value - low) / (high - low) * SIDE;
-  const scaleY = (value: number) => TOP + SIDE - (value - low) / (high - low) * SIDE;
-  const ticks = rankTicks(low, high);
   const listLimit = compact ? 5 : 8;
   const disagreements = useMemo(() => topRankDisagreements(points, listLimit), [listLimit, points]);
   const highlighted = useMemo(
@@ -61,6 +53,15 @@ export function CompareResponseScatter({ points, xLabel, yLabel, roiLabel, onOpe
     [disagreements],
   );
   const maxRank = Math.max(1, ...points.flatMap((point) => [point.rankA, point.rankB]));
+  const plotHeight = H - TOP - BOTTOM;
+  const scaleY = (rank: number) => TOP + ((rank - 1) / Math.max(maxRank - 1, 1)) * plotHeight;
+  const ticks = rankTicks(maxRank);
+
+  const orderedPoints = useMemo(() => {
+    const background = points.filter((point) => !highlighted.has(point.imageName));
+    const foreground = points.filter((point) => highlighted.has(point.imageName));
+    return [...background, ...foreground];
+  }, [highlighted, points]);
 
   function openPoint(point: SharedResponsePoint) {
     onOpenImage({
@@ -89,7 +90,7 @@ export function CompareResponseScatter({ points, xLabel, yLabel, roiLabel, onOpe
     const next = {
       point,
       x: Math.max(8, Math.min(window.innerWidth - width - 8, rect.right + 14)),
-      y: Math.max(8, Math.min(window.innerHeight - 270 - 8, rect.top - 90)),
+      y: Math.max(8, Math.min(window.innerHeight - 270 - 8, rect.top - 40)),
     };
     if (trigger === 'focus') { setHoverPreview(null); setFocusPreview(next); }
     else setHoverPreview(next);
@@ -101,86 +102,107 @@ export function CompareResponseScatter({ points, xLabel, yLabel, roiLabel, onOpe
     nodes[(index + delta + nodes.length) % nodes.length].focus();
   }
 
-  const orderedPoints = [
-    ...points.filter((point) => !highlighted.has(point.imageName)),
-    ...points.filter((point) => highlighted.has(point.imageName)),
-  ];
+  function lineColor(point: SharedResponsePoint, active: boolean): string {
+    if (!active) return 'var(--border)';
+    if (point.rankLead === 'b') return BLUE;
+    if (point.rankLead === 'a') return RED;
+    return '#6b7280';
+  }
 
   return (
-    <section className="compare-response-section" aria-label={`${xLabel} versus ${yLabel} response ranks`}>
+    <section className="compare-response-section" aria-label={`${xLabel} versus ${yLabel} rank slopegraph`}>
       <div className="compare-response-intro">
-        <h3>{xLabel} vs {yLabel}</h3>
-        <span>{points.length} images · {roiLabel} · near diagonal = similar ranking</span>
+        <h3>{xLabel} → {yLabel}</h3>
+        <span>{points.length} images · {roiLabel} · crossing lines = rank shifts</span>
       </div>
       <div className="compare-response-layout">
-        <figure className="compare-response-figure" ref={figureRef}>
+        <figure className="compare-response-figure compare-rank-slope-figure" ref={figureRef}>
           <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={`${xLabel} versus ${yLabel} response ranks`}>
-            <rect x={LEFT} y={TOP} width={SIDE} height={SIDE} className="compare-response-frame" />
+            <text className="compare-rank-slope-axis-title" x={LEFT_X} y={18} textAnchor="middle">{xLabel}</text>
+            <text className="compare-rank-slope-axis-title" x={RIGHT_X} y={18} textAnchor="middle">{yLabel}</text>
+            <line className="compare-rank-slope-axis" x1={LEFT_X} y1={TOP} x2={LEFT_X} y2={TOP + plotHeight} />
+            <line className="compare-rank-slope-axis" x1={RIGHT_X} y1={TOP} x2={RIGHT_X} y2={TOP + plotHeight} />
             {ticks.map((tick) => (
-              <g key={tick} className="compare-response-axis">
-                <line x1={scaleX(tick)} y1={TOP} x2={scaleX(tick)} y2={TOP + SIDE} />
-                <line x1={LEFT} y1={scaleY(tick)} x2={LEFT + SIDE} y2={scaleY(tick)} />
-                <text x={scaleX(tick)} y={TOP + SIDE + 20} textAnchor="middle">#{tick}</text>
-                <text x={LEFT - 12} y={scaleY(tick) + 4} textAnchor="end">#{tick}</text>
+              <g key={tick} className="compare-rank-slope-tick">
+                <line x1={LEFT_X - 5} y1={scaleY(tick)} x2={LEFT_X} y2={scaleY(tick)} />
+                <line x1={RIGHT_X} y1={scaleY(tick)} x2={RIGHT_X + 5} y2={scaleY(tick)} />
+                <text x={LEFT_X - 10} y={scaleY(tick) + 4} textAnchor="end">#{tick}</text>
+                <text x={RIGHT_X + 10} y={scaleY(tick) + 4} textAnchor="start">#{tick}</text>
               </g>
             ))}
-            <line
-              className="compare-response-identity"
-              x1={scaleX(Math.max(low, 1))}
-              y1={scaleY(Math.max(low, 1))}
-              x2={scaleX(Math.min(high, maxRank))}
-              y2={scaleY(Math.min(high, maxRank))}
-            />
-            <text className="compare-response-identity-label" x={LEFT + SIDE - 12} y={TOP + 18} textAnchor="end">equal rank</text>
+            <text className="compare-rank-slope-end-label" x={LEFT_X} y={H - 8} textAnchor="middle">rank 1 at top</text>
+
             {orderedPoints.map((point, index) => {
               const isHighlight = highlighted.has(point.imageName);
-              const color = point.rankLead === 'b' ? BLUE : point.rankLead === 'a' ? RED : '#929292';
+              const isHovered = hoveredName === point.imageName;
+              const active = isHighlight || isHovered;
+              const y1 = scaleY(point.rankA);
+              const y2 = scaleY(point.rankB);
+              const color = lineColor(point, active);
               return (
                 <g
                   key={point.imageName}
                   role="button"
                   tabIndex={0}
+                  className={`compare-rank-slope-item${active ? ' is-active' : ''}`}
                   data-response-image={point.imageId}
                   data-rank-lead={point.rankLead ?? ''}
-                  data-rank-a={point.rankA}
-                  data-rank-b={point.rankB}
                   data-rank-delta={point.rankDelta}
                   aria-label={`${point.imageId}; ${xLabel} rank ${point.rankA}; ${yLabel} rank ${point.rankB}; Δrank ${point.rankDelta}`}
                   aria-describedby={preview?.point.imageName === point.imageName ? tooltipId : undefined}
-                  onMouseEnter={(event) => showPreview(point, event.currentTarget, 'hover')}
-                  onMouseLeave={() => setHoverPreview(null)}
-                  onFocus={(event) => showPreview(point, event.currentTarget, 'focus')}
-                  onBlur={() => setFocusPreview(null)}
+                  onMouseEnter={(event) => {
+                    setHoveredName(point.imageName);
+                    showPreview(point, event.currentTarget, 'hover');
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredName(null);
+                    setHoverPreview(null);
+                  }}
+                  onFocus={(event) => {
+                    setHoveredName(point.imageName);
+                    showPreview(point, event.currentTarget, 'focus');
+                  }}
+                  onBlur={() => {
+                    setHoveredName(null);
+                    setFocusPreview(null);
+                  }}
                   onClick={() => openPoint(point)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPoint(point); }
                     if (event.key === 'Escape') {
-                      setHoverPreview(null); setFocusPreview(null);
+                      setHoverPreview(null); setFocusPreview(null); setHoveredName(null);
                     }
                     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); moveFocus(index, 1); }
                     if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); moveFocus(index, -1); }
                   }}
                 >
-                  <circle className="compare-response-hit" cx={scaleX(point.rankA)} cy={scaleY(point.rankB)} r={7} />
-                  <circle
-                    className="compare-response-point"
-                    cx={scaleX(point.rankA)}
-                    cy={scaleY(point.rankB)}
-                    r={isHighlight ? 5.4 : 3.8}
-                    fill={color}
-                    opacity={isHighlight ? 1 : 0.55}
+                  <line
+                    className="compare-rank-slope-hit"
+                    x1={LEFT_X}
+                    y1={y1}
+                    x2={RIGHT_X}
+                    y2={y2}
                   />
+                  <line
+                    className="compare-rank-slope-line"
+                    x1={LEFT_X}
+                    y1={y1}
+                    x2={RIGHT_X}
+                    y2={y2}
+                    stroke={color}
+                    strokeWidth={active ? 2.4 : 1}
+                    opacity={active ? 0.95 : 0.12}
+                  />
+                  <circle cx={LEFT_X} cy={y1} r={active ? 3.6 : 2} fill={color} opacity={active ? 1 : 0.2} />
+                  <circle cx={RIGHT_X} cy={y2} r={active ? 3.6 : 2} fill={color} opacity={active ? 1 : 0.2} />
                 </g>
               );
             })}
-            <text className="compare-response-axis-title" x={LEFT + SIDE / 2} y={H - 20} textAnchor="middle">
-              {xLabel} rank
-            </text>
-            <text className="compare-response-axis-title" transform={`translate(19,${TOP + SIDE / 2}) rotate(-90)`} textAnchor="middle">
-              {yLabel} rank
-            </text>
           </svg>
-          <figcaption>Rank 1 = highest ROI mean. x = measured Murty human; y = model prediction. Color marks largest |Δrank|.</figcaption>
+          <figcaption>
+            Left = {xLabel} rank, right = {yLabel} rank (1 = highest ROI mean). Steeper lines = larger rank shifts.
+            Color marks the largest |Δrank|.
+          </figcaption>
         </figure>
 
         <div className="compare-gap-examples" aria-label={`Largest rank disagreements versus ${yLabel}`}>
@@ -198,6 +220,8 @@ export function CompareResponseScatter({ points, xLabel, yLabel, roiLabel, onOpe
                     className={`compare-rank-disagreement compare-rank-disagreement--${point.rankLead ?? 'tie'}`}
                     key={point.imageName}
                     onClick={() => openPoint(point)}
+                    onMouseEnter={() => setHoveredName(point.imageName)}
+                    onMouseLeave={() => setHoveredName(null)}
                     aria-label={`Open ${point.imageId}; Δrank ${point.rankDelta}`}
                   >
                     <img src={point.imageUrl} alt="" />

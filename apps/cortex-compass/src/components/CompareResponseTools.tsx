@@ -125,16 +125,17 @@ export function CompareResponseTools({ cellA, cellB, evidenceA, evidenceB, onOpe
             <div>
               <h3 className="compare-analysis-title">Univariate · Murty human vs each model</h3>
               <p className="compare-analysis-note">
-                Two rank–rank scatters compare measured Murty-185 ROI means (p1–p4 average) against each
-                selected model&apos;s predicted ROI means. This asks which model orders images more like humans.
+                Two slopegraphs compare Murty-185 human ranks with each model&apos;s predicted ranks
+                (1 at top). Connecting lines show rank shifts. Alignment is the official scoreboard
+                univariate score for that ROI.
               </p>
             </div>
             <div className="compare-metric-badges" aria-label="Human–model summary metrics">
-              <span title={`Spearman ρ between Murty human ranks and ${aLabel}`}>
-                {aLabel} ρ: <strong>{fmt(pairA.comparison.rankSpearman)}</strong>
+              <span title={`Scoreboard univariate Alignment for ${aLabel} on this ROI`}>
+                {aLabel} Alignment: <strong>{fmt(cellA.score)}</strong>
               </span>
-              <span title={`Spearman ρ between Murty human ranks and ${bLabel}`}>
-                {bLabel} ρ: <strong>{fmt(pairB.comparison.rankSpearman)}</strong>
+              <span title={`Scoreboard univariate Alignment for ${bLabel} on this ROI`}>
+                {bLabel} Alignment: <strong>{fmt(cellB.score)}</strong>
               </span>
             </div>
           </div>
@@ -197,10 +198,10 @@ function HumanModelPanel({
   return (
     <div className="compare-human-model-panel">
       <div className="compare-metric-badges compare-human-model-metrics" aria-label={`${label} versus human metrics`}>
-        <span title="Pearson correlation of ROI-mean responses">
-          Mean r: <strong>{fmt(pair.comparison.meanPearson)}</strong>
+        <span title="Official scoreboard univariate Alignment (NSD→Murty Pearson), not a re-average of human means in this panel">
+          Alignment: <strong>{fmt(cell.score)}</strong>
         </span>
-        <span title="Spearman correlation of response ranks">
+        <span title="Spearman correlation between Murty human ranks and this model's predicted ranks">
           Rank ρ: <strong>{fmt(pair.comparison.rankSpearman)}</strong>
         </span>
       </div>

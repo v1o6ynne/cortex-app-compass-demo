@@ -2040,6 +2040,16 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .compare-response-intro { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .compare-response-intro h3 { font-size: .87rem; }
 .compare-response-intro > span { font-size: .72rem; color: var(--text-3); }
+.compare-rank-slope-figure svg { max-width: 420px; }
+.compare-rank-slope-axis { stroke: var(--border-strong); stroke-width: 1.2; }
+.compare-rank-slope-tick line { stroke: var(--border); stroke-width: .8; }
+.compare-rank-slope-tick text { fill: var(--text-3); font-size: 11px; }
+.compare-rank-slope-axis-title { fill: var(--text-2); font-size: 12px; font-weight: 650; }
+.compare-rank-slope-end-label { fill: var(--text-3); font-size: 10px; }
+.compare-rank-slope-hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+.compare-rank-slope-item:focus { outline: none; }
+.compare-rank-slope-item:focus .compare-rank-slope-line { stroke-width: 3; }
+.compare-rank-slope-item.is-active { outline: none; }
 .compare-rdm-section { display: grid; gap: 12px; }
 .compare-rdm-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
 .compare-rdm-figure { margin: 0; display: grid; gap: 6px; justify-items: center; }
